@@ -118,7 +118,6 @@ Each agent should:
 
 Do not build a heavy autonomous orchestration framework. Keep agents as clear functions and small modules.
 
-
 ---
 
 

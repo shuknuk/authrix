@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f5f0e8;
+  --foreground: #112132;
+  --surface: rgba(255, 251, 245, 0.9);
+  --surface-strong: rgba(255, 255, 255, 0.94);
+  --muted: #6a788a;
+  --line: rgba(17, 33, 50, 0.12);
+  --accent: #0f7b8f;
+  --accent-soft: rgba(15, 123, 143, 0.12);
+  --warning: #b7791f;
+  --danger: #a53f3f;
+  --success: #1f7a5a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-strong: var(--surface-strong);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(15, 123, 143, 0.18), transparent 30%),
+    radial-gradient(circle at top right, rgba(255, 181, 71, 0.18), transparent 24%),
+    linear-gradient(180deg, #f7f2ea 0%, #f0e8db 100%);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(15, 123, 143, 0.18);
+}
+
+.authrix-grid {
+  background-image:
+    linear-gradient(to right, rgba(17, 33, 50, 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(17, 33, 50, 0.035) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.authrix-shell {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.2)),
+    rgba(255, 251, 245, 0.58);
+  backdrop-filter: blur(20px);
+}
+
+.authrix-card {
+  background: var(--surface-strong);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 20px 60px rgba(17, 33, 50, 0.08);
+}
+
+.authrix-card-soft {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.authrix-divider {
+  border-color: var(--line);
+}
+
+.authrix-text-muted {
+  color: var(--muted);
+}
+
+.authrix-kicker {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.authrix-display {
+  font-family: var(--font-display), serif;
+}
