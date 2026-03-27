@@ -31,6 +31,21 @@ Each agent has a narrow responsibility and limited scope.
 
 ---
 
+
+## Security Architecture
+
+Authrix enforces strict agent boundaries:
+
+- agents never store or access raw API credentials
+- all external actions are mediated through a backend layer
+- each agent receives only minimal required inputs
+- agents communicate through structured outputs, not shared state
+- sensitive data is never passed unnecessarily between agents
+
+This ensures safe execution in real-world environments.
+
+---
+
 ## Key Principles
 
 - No "god agent"
