@@ -118,6 +118,23 @@ Each agent should:
 
 Do not build a heavy autonomous orchestration framework. Keep agents as clear functions and small modules.
 
+
+---
+
+
+## Agent Security Constraints
+
+Agents must follow strict security rules:
+
+- agents must NOT store or access API keys directly
+- agents must NOT call external APIs with credentials
+- all external actions must go through a mediated backend layer
+- agents should only receive minimal required data
+- do not pass raw sensitive data between agents
+- prefer output-based chaining over shared context
+
+If implementing integrations, always route execution through a controlled layer.
+
 ---
 
 ## Engineering rules
