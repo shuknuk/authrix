@@ -4,11 +4,11 @@ Authrix is a secure autonomous operations layer for startup teams.
 
 It is designed for small technical teams that move quickly across product, engineering, meetings, documentation, infrastructure, and execution, but struggle to preserve continuity across all of that motion. Authrix exists to turn scattered activity into structured organizational action.
 
-This is not a generic chatbot, a narrow automation script, or a dashboard pretending to be an agent system. Authrix is a product layer built on top of an autonomous runtime, with clear security boundaries, persistent context, specialized agents, and human oversight.
+This is not a generic chatbot, a narrow automation script, or a dashboard pretending to be an agent system. Authrix is a complete product — a unique operations platform with specialized agents, structured workflows, approval-gated actions, and a professional control tower — backed by a fully autonomous AI runtime.
 
 ## One-Line Pitch
 
-Authrix is a secure autonomous operations layer that turns engineering activity, meetings, documentation, workflow signals, and operational data into structured, auditable action for startup teams.
+Authrix is a secure autonomous operations platform that turns engineering activity, meetings, documentation, workflow signals, and operational data into structured, auditable action for startup teams.
 
 ## Overview
 
@@ -31,7 +31,7 @@ But those signals rarely become shared organizational memory or reliable follow-
 - operational risk rises quietly
 - founders manually stitch together information from too many places
 
-Authrix is meant to solve that. It acts as the connective intelligence layer above the team's existing systems and turns raw activity into summaries, decisions, tasks, approvals, alerts, and durable records.
+Authrix solves that. It acts as the connective intelligence layer above the team's existing systems and turns raw activity into summaries, decisions, tasks, approvals, alerts, and durable records.
 
 ## Core Thesis
 
@@ -53,13 +53,15 @@ Authrix is not:
 - an email bot
 - a static dashboard
 - fake "agent complexity" designed for show
+- a thin wrapper around an existing runtime
 
 Authrix is:
-- a startup operations system
+- a startup operations system with a unique product vision
 - a multi-agent product with specialized roles
 - a live control tower with approvals and auditability
 - a secure delegated-action layer over real tools
 - a shared memory and accountability system for a startup team
+- a complete platform that happens to use open-source infrastructure to power its runtime
 
 ## Main Use Cases
 
@@ -97,29 +99,32 @@ Authrix is not only prompt-driven. It is also designed to react to uploaded file
 
 ### 2. Autonomous Runtime Layer
 
-Authrix is designed to build on OpenClaw as the runtime foundation.
+Authrix uses an autonomous AI runtime to handle the infrastructure side of agent execution. The runtime is built upon OpenClaw, an open-source multi-channel AI gateway.
 
-OpenClaw should provide:
+Using an open-source runtime foundation is a practical engineering decision. It saves significant time on the generic infrastructure that every autonomous agent system needs — persistent execution, background jobs, session management, tool calling, provider routing — and lets the team focus entirely on what makes Authrix unique: the product layer.
+
+The runtime provides:
 - persistent execution
 - background job handling
 - message-driven sessions
 - multi-step task handling
-- tool use
+- tool use and provider routing
 - runtime-level autonomy
 
-The point of using OpenClaw is not to outsource the product. It is to avoid rebuilding the generic runtime infrastructure that already exists.
+Authrix does not modify or dumb down the runtime. It optimizes and configures it for startup operations use cases, and builds the entire product experience on top of it.
 
-OpenClaw should own runtime behavior.
-Authrix should own product behavior.
+The boundary is simple:
+- the runtime handles how agents execute
+- Authrix handles what agents do and why
 
 ### 3. Product Backend Layer
 
-This is the real application layer of Authrix.
+This is the real application layer of Authrix and where the product's unique value lives.
 
-It should own:
+It owns:
 - workspace and team state
 - structured records
-- agent routing
+- agent routing and coordination
 - approval policies
 - audit history
 - risk classification
@@ -130,15 +135,13 @@ It should own:
 - integration adapters
 - shared state for the control tower
 
-This is where Authrix becomes a real product instead of a wrapper around agents.
+This is where Authrix becomes a real product instead of a collection of AI calls.
 
 ### 4. Security and Identity Layer
 
-Security is one of the strongest and most important parts of Authrix.
+Security is central to Authrix because the product is fundamentally about trusted delegated action.
 
 Authrix is designed to use Auth0 for AI Agents and Token Vault as the delegated identity and token custody layer. That makes it possible to connect systems like GitHub, Notion, Vercel, Supabase, and chat platforms without letting agents directly hold raw credentials.
-
-This matters because Authrix is fundamentally about trusted delegated action.
 
 Security principles:
 - scoped permissions
@@ -169,19 +172,17 @@ The product should balance two modes:
 
 The system should feel autonomous, but never invisible.
 
-## What Authrix Should Own
+## What Authrix Owns vs What the Runtime Owns
 
-The cleanest technical boundary in the whole project is the line between OpenClaw and Authrix.
-
-OpenClaw should own:
+The runtime handles generic autonomous infrastructure:
 - long-running execution
 - session lifecycle
 - background processing
 - tool execution plumbing
-- generic autonomous runtime behavior
-- runtime-level task handling
+- provider routing and model access
+- generic agent loop mechanics
 
-Authrix should own:
+Authrix owns everything that makes this product unique:
 - the startup operations product layer
 - workspace context and structured records
 - specialized agent logic
@@ -195,6 +196,20 @@ Authrix should own:
 Simple rule:
 - if a capability would exist in any autonomous system, it belongs to the runtime
 - if it exists because the product is Authrix, it belongs to Authrix
+
+## Runtime Bridge
+
+Authrix communicates with the runtime through a defined bridge interface. This interface abstracts the runtime's capabilities into a clean contract that Authrix's product backend can call.
+
+The bridge provides:
+- agent execution (run a task with tools and get structured output)
+- session management (create, list, read history)
+- tool invocation (execute a specific tool with arguments)
+- background job submission
+
+For the MVP, the bridge is implemented with mock/local functions. When the runtime integration is ready, the mock implementation is swapped for real runtime calls without changing any product code.
+
+This pattern keeps Authrix independent of any specific runtime version or API shape, and makes it possible to develop the full product experience before the runtime is wired.
 
 ## Agent System
 
@@ -407,6 +422,8 @@ The technical architecture should stay simple, typed, and reviewable.
 
 The frontend should focus on clarity, professionalism, and trust. The control tower should feel modern and intentional, not overloaded.
 
+UI refinement is not the initial priority. The backend, agents, and runtime bridge come first. The control tower UI will be built to a functional level early and polished later.
+
 ### Backend
 
 - Node.js product backend layer
@@ -415,6 +432,16 @@ The frontend should focus on clarity, professionalism, and trust. The control to
 - approval and audit handling
 - integration adapters
 - data normalization pipelines
+- runtime bridge interface
+
+The backend is the primary development focus for the MVP.
+
+### Runtime
+
+- Built upon OpenClaw (open-source, MIT licensed)
+- Configured and optimized for Authrix's startup operations use cases
+- Accessed through the runtime bridge interface
+- Mocked during early development, wired to real runtime later
 
 ### Database
 
@@ -424,18 +451,9 @@ The database should hold the product's structured state, not just raw blobs.
 
 ### Security and Identity
 
-- Auth0 for AI Agents
-- Token Vault
-
-All delegated third-party access should route through this layer.
-
-### Runtime
-
-- OpenClaw as the autonomous runtime foundation
-
-### Future Hardened Deployment Option
-
-- NemoClaw or OpenShell can be treated as later-stage deployment hardening, not the initial target
+- Auth0 for AI Agents (deferred to after core backend is functional)
+- Token Vault for delegated third-party access
+- Mocked auth during early development
 
 ## Technical Principles
 
@@ -448,6 +466,8 @@ Authrix should follow these technical principles:
 - keep reads and writes clearly separated
 - prefer output-based chaining over shared raw context
 - preserve auditability everywhere it matters
+- backend first, UI refinement later
+- mock first, replace with real integrations incrementally
 
 ## UX Philosophy
 
