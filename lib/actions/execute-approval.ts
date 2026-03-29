@@ -13,6 +13,13 @@ interface ExecutionResult {
 export async function executeApprovalAction(
   approval: ApprovalRequest
 ): Promise<ExecutionResult> {
+  if (approval.status !== "approved") {
+    return {
+      success: false,
+      message: `Approval "${approval.id}" cannot execute because its status is "${approval.status}".`,
+    };
+  }
+
   if (approval.actionKind === "github.issue.create") {
     return executeGitHubApprovalAction(approval);
   }

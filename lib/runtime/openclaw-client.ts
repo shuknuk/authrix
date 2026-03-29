@@ -4,7 +4,6 @@ import type { OpenClawRuntimeConfig } from "./config";
 
 const OPENCLAW_PROTOCOL_VERSION = 3;
 const CONNECT_TIMEOUT_MS = 5_000;
-const DEFAULT_SCOPES = ["operator.read", "operator.write"];
 
 type PendingRequest = {
   expectFinal: boolean;
@@ -284,7 +283,7 @@ export async function connectToOpenClawGateway(
         instanceId: randomUUID(),
       },
       role: "operator",
-      scopes: DEFAULT_SCOPES,
+      scopes: config.connectScopes,
       auth:
         config.token || config.password
           ? {

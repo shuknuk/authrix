@@ -1,5 +1,5 @@
 import { promises as fs } from "node:fs";
-import path from "node:path";
+import { resolveAuthrixDataPath } from "@/lib/security/paths";
 import type { ApprovalRequest } from "@/types/domain";
 
 interface ExecutionResult {
@@ -8,8 +8,11 @@ interface ExecutionResult {
   metadata?: Record<string, unknown>;
 }
 
-const generatedDocsDir = path.join(process.cwd(), ".authrix-data", "generated-docs");
-const generatedDocsFile = path.join(generatedDocsDir, "operational-updates.md");
+const generatedDocsDir = resolveAuthrixDataPath("generated-docs");
+const generatedDocsFile = resolveAuthrixDataPath(
+  "generated-docs",
+  "operational-updates.md"
+);
 
 export async function executeDocsApprovalAction(
   approval: ApprovalRequest

@@ -1,4 +1,5 @@
 import { auth0 } from "./auth0";
+import { allowTokenVaultAccessTokenOverride } from "@/lib/security/config";
 
 const tokenVaultEnv = {
   githubConnection: process.env.AUTH0_GITHUB_CONNECTION_NAME,
@@ -21,7 +22,11 @@ export async function getGitHubTokenVaultAccessToken(): Promise<string | null> {
     }
   }
 
-  return tokenVaultEnv.githubAccessToken ?? null;
+  if (allowTokenVaultAccessTokenOverride()) {
+    return tokenVaultEnv.githubAccessToken ?? null;
+  }
+
+  return null;
 }
 
 export function getGitHubConnectionName(): string | null {

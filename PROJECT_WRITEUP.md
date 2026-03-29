@@ -140,6 +140,11 @@ Security principles:
 - approval for sensitive writes
 - full auditability
 
+Important trust-model note:
+- Auth0 protects delegated access to external systems
+- Authrix still needs backend mediation, approval guardrails, and runtime sandboxing
+- host isolation still matters even when OAuth and token custody are strong
+
 ### 5. Control Tower Layer
 
 The frontend is a Next.js web application that acts as the control tower for the system.
@@ -160,6 +165,29 @@ The product balances two modes:
 - clear oversight through the control tower
 
 The system should feel autonomous, but never invisible.
+
+## Deployment Trust Model
+
+Authrix should be designed around a dedicated worker-machine deployment model.
+
+Preferred deployment targets:
+- a separate mini PC
+- a VM or VPS
+- a dedicated workstation or test device
+
+Why this matters:
+- startup operators often have personal files, browser sessions, passwords, SSH keys, and unrelated private data on their daily machine
+- Authrix is intended to be always-on and operationally powerful
+- even a well-built autonomous system should minimize blast radius through host separation and least privilege
+
+This is not a sign that Authrix is expected to be insecure forever. It is the professional trust boundary for an always-on autonomous product.
+
+Long term, sandboxing and host guardrails should strengthen the product further:
+- constrained host execution
+- explicit tool allowlists
+- path-scoped access
+- approval-aware high-risk actions
+- clear distinction between runtime behavior and privileged backend adapters
 
 ## What Authrix Owns
 
@@ -424,6 +452,7 @@ The durable store should hold the product's structured state, not just raw blobs
 - Auth0 for AI Agents
 - Token Vault for delegated third-party access
 - approval-gated backend-mediated writes
+- worker-box deployment and sandbox hardening as part of the trust model
 
 ## Technical Principles
 
@@ -436,6 +465,7 @@ Authrix should follow these technical principles:
 - output-based chaining is preferred over shared raw context
 - auditability is preserved everywhere it matters
 - the product layer stays readable even when runtime internals evolve
+- host-level execution should move toward least privilege and sandbox constraints
 
 ## UX Philosophy
 

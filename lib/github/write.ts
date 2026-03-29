@@ -1,4 +1,9 @@
 import { getGitHubTokenVaultAccessToken } from "@/lib/auth/token-vault";
+import {
+  allowGitHubPersonalAccessTokenFallback,
+  areExternalWritesEnabled,
+  getExternalWritePolicyMessage,
+} from "@/lib/security/config";
 import type { ApprovalRequest } from "@/types/domain";
 
 interface ExecutionResult {
@@ -31,14 +36,25 @@ export async function executeGitHubApprovalAction(
     };
   }
 
-  const token =
-    (await getGitHubTokenVaultAccessToken()) ?? githubEnv.personalAccessToken ?? null;
+  if (!areExternalWritesEnabled()) {
+    return {
+      success: false,
+      message: getExternalWritePolicyMessage("GitHub"),
+    };
+  }
+
+  const tokenVaultToken = await getGitHubTokenVaultAccessToken();
+  const personalAccessToken = allowGitHubPersonalAccessTokenFallback()
+    ? githubEnv.personalAccessToken ?? null
+    : null;
+  const token = tokenVaultToken ?? personalAccessToken;
 
   if (!token) {
     return {
       success: false,
-      message:
-        "GitHub write execution requires a Token Vault GitHub connection or a configured personal access token.",
+      message: allowGitHubPersonalAccessTokenFallback()
+        ? "GitHub write execution requires a Token Vault GitHub connection or a configured personal access token."
+        : "GitHub write execution requires a Token Vault GitHub connection. Personal access token fallback is disabled by policy.",
     };
   }
 
@@ -60,7 +76,7 @@ export async function executeGitHubApprovalAction(
   );
 
   if (!response.ok) {
-    const text = await response.text();
+    const text = truncateRemoteError(await response.text());
     return {
       success: false,
       message: `GitHub issue creation failed with ${response.status}. ${text}`.trim(),
@@ -93,4 +109,8 @@ function buildIssueBody(approval: ApprovalRequest): string {
     `Risk level: ${approval.riskLevel}`,
     `Approval id: ${approval.id}`,
   ].join("\n");
+}
+
+function truncateRemoteError(value: string): string {
+  return value.length > 500 ? `${value.slice(0, 497)}...` : value;
 }

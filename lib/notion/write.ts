@@ -1,4 +1,5 @@
 import { getNotionConfig, isNotionConfigured } from "@/lib/notion/service";
+import { areExternalWritesEnabled, getExternalWritePolicyMessage } from "@/lib/security/config";
 import type { ApprovalRequest } from "@/types/domain";
 
 interface ExecutionResult {
@@ -21,6 +22,13 @@ export async function executeNotionDocsUpdate(
     return {
       success: false,
       message: "Notion publishing is not configured for this workspace.",
+    };
+  }
+
+  if (!areExternalWritesEnabled()) {
+    return {
+      success: false,
+      message: getExternalWritePolicyMessage("Notion"),
     };
   }
 
@@ -96,7 +104,7 @@ export async function executeNotionDocsUpdate(
   });
 
   if (!response.ok) {
-    const text = await response.text();
+    const text = truncateRemoteError(await response.text());
     return {
       success: false,
       message: `Notion page creation failed with ${response.status}. ${text}`.trim(),
@@ -116,4 +124,8 @@ export async function executeNotionDocsUpdate(
       pageUrl: page.url,
     },
   };
+}
+
+function truncateRemoteError(value: string): string {
+  return value.length > 500 ? `${value.slice(0, 497)}...` : value;
 }

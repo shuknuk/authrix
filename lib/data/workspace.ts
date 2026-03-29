@@ -304,6 +304,10 @@ export async function updateApprovalRequest(
       return snapshot;
     }
 
+    if (approval.status !== "pending") {
+      return snapshot;
+    }
+
     approval.status = status;
     approval.resolvedAt = new Date().toISOString();
     approval.resolvedBy = resolvedBy;
