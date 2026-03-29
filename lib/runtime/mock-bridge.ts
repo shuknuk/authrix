@@ -4,6 +4,8 @@ import type {
   ToolResult,
   JobStatus,
 } from "@/types/runtime";
+import { recordSecurityEvent } from "@/lib/security/events";
+import { evaluateRuntimeRequestedTools, getRuntimeToolPolicy } from "@/lib/security/runtime-policy";
 
 const sessions: Map<string, Session> = new Map();
 const jobs: Map<string, JobStatus> = new Map();
@@ -20,6 +22,7 @@ export function createMockBridge(): RuntimeBridge {
         healthy: true,
         description: "Authrix is using the local mock runtime bridge.",
         checkedAt: new Date().toISOString(),
+        toolPolicy: getRuntimeToolPolicy(),
       };
     },
 
@@ -37,6 +40,21 @@ export function createMockBridge(): RuntimeBridge {
         request.agentId,
         request.input
       )) as TOutput;
+      const toolEvaluation = evaluateRuntimeRequestedTools(request.tools);
+
+      if (toolEvaluation.blockedTools.length > 0) {
+        await recordSecurityEvent({
+          level: "warning",
+          category: "runtime_policy",
+          title: "Runtime tools blocked by policy",
+          description: `Authrix blocked ${toolEvaluation.blockedTools.length} requested runtime tool(s) for the ${request.agentId} agent while running through the mock bridge.`,
+          metadata: {
+            agentId: request.agentId,
+            blockedTools: toolEvaluation.blockedTools,
+            provider: "mock",
+          },
+        });
+      }
 
       return {
         output,
@@ -44,6 +62,8 @@ export function createMockBridge(): RuntimeBridge {
           executionTimeMs: Date.now() - start,
           timestamp: new Date().toISOString(),
           provider: "mock",
+          allowedTools: toolEvaluation.allowedTools,
+          blockedTools: toolEvaluation.blockedTools.map((entry) => entry.tool),
         },
       };
     },
@@ -74,10 +94,39 @@ export function createMockBridge(): RuntimeBridge {
       args: Record<string, unknown>;
       sessionId?: string;
     }): Promise<ToolResult> {
+      const evaluation = evaluateRuntimeRequestedTools([request.tool]);
+      const blocked = evaluation.blockedTools[0];
+
+      if (blocked) {
+        await recordSecurityEvent({
+          level: "warning",
+          category: "runtime_policy",
+          title: "Runtime tool invocation blocked",
+          description: `Authrix blocked the runtime tool "${request.tool}" in mock mode because ${blocked.reason}.`,
+          metadata: {
+            tool: request.tool,
+            reason: blocked.reason,
+            provider: "mock",
+          },
+        });
+
+        return {
+          success: false,
+          output: null,
+          error: `Runtime tool "${request.tool}" was blocked by policy: ${blocked.reason}.`,
+          metadata: {
+            blockedByPolicy: true,
+          },
+        };
+      }
+
       // Mock: return a no-op success
       return {
         success: true,
         output: { tool: request.tool, message: "Mock tool execution" },
+        metadata: {
+          allowedByPolicy: true,
+        },
       };
     },
 

@@ -29,6 +29,11 @@ export async function executeNotionDocsUpdate(
     return {
       success: false,
       message: getExternalWritePolicyMessage("Notion"),
+      metadata: {
+        policyBlocked: true,
+        policy: "external-write-policy",
+        target: "Notion",
+      },
     };
   }
 

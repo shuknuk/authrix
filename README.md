@@ -42,6 +42,8 @@ Baseline guardrails already present in the codebase:
 - manual token fallbacks are now explicit instead of assumed
 - local generated docs and persisted state stay inside `.authrix-data`
 - approval execution rejects already-resolved requests
+- control-tower security posture is visible through `/api/security/status` and the Connections page
+- policy-blocked runtime and approval events are persisted and visible through `/api/security/events`
 
 The deeper sandbox hardening phase will build on top of these guardrails instead of replacing them later.
 
@@ -104,7 +106,27 @@ Mediated write execution now has an explicit policy switch.
 - unset or `false`
   Blocks those external writes and returns a policy message instead.
 
-By default, production-style environments should set this explicitly on a dedicated worker deployment. Local development can keep it permissive while testing.
+By default, production-style environments should set this explicitly on a dedicated worker deployment. Local development should keep this blocked unless you are intentionally testing a mediated write flow.
+
+## Runtime Tool Policy
+
+Phase 6 now includes baseline runtime tool guardrails.
+
+- `AUTHRIX_RUNTIME_ALLOWED_TOOLS`
+  Optional comma-separated allowlist for named runtime tools.
+
+- `AUTHRIX_RUNTIME_BLOCKED_TOOLS`
+  Optional comma-separated hard blocklist for named runtime tools.
+
+- `AUTHRIX_RUNTIME_ALLOW_HOST_TOOLS`
+  Defaults to `false`. Host-level tools stay blocked by default unless explicitly enabled.
+
+Blocked runtime tool requests are recorded as security events so operators can inspect policy enforcement from the control tower.
+
+Recommended default posture:
+- keep `AUTHRIX_RUNTIME_ALLOW_HOST_TOOLS=false`
+- only set `AUTHRIX_RUNTIME_ALLOWED_TOOLS` for the narrow tool surface Authrix really needs
+- use `AUTHRIX_RUNTIME_BLOCKED_TOOLS` as a hard deny list for anything you never want available on the worker box
 
 Engineering note: some internal runtime modules still use gateway-shaped transport and configuration naming while the reused runtime foundation is being folded more deeply into Authrix. That is an implementation detail, not the product architecture.
 
