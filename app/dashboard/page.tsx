@@ -1,18 +1,23 @@
 import { ApprovalQueueCard } from "@/components/dashboard/approval-queue-card";
 import { CostRiskCard } from "@/components/dashboard/cost-risk-card";
+import { getDeploymentReadinessReport } from "@/lib/deployment/readiness";
+import { SecurityPostureCard } from "@/components/dashboard/security-posture-card";
 import { SuggestedTasksCard } from "@/components/dashboard/suggested-tasks-card";
 import { WeeklySummaryCard } from "@/components/dashboard/weekly-summary-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/session";
 import { listWorkspaceJobs } from "@/lib/data/jobs";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
+import { getSecurityPosture } from "@/lib/security/status";
 
 export default async function DashboardPage() {
   await requireSession("/dashboard");
 
-  const [snapshot, jobs] = await Promise.all([
+  const [snapshot, jobs, securityPosture, readinessReport] = await Promise.all([
     getWorkspaceSnapshot(),
     listWorkspaceJobs(1),
+    Promise.resolve(getSecurityPosture()),
+    getDeploymentReadinessReport(),
   ]);
   const engineeringPipeline = snapshot.state.pipelines.find(
     (pipeline) => pipeline.id === "engineering-summary"
@@ -55,6 +60,26 @@ export default async function DashboardPage() {
             Latest refresh job: {latestJob.state}
           </span>
         ) : null}
+        <span
+          className={`rounded-full px-2.5 py-1 ${
+            securityPosture.deploymentMode === "worker-box"
+              ? "bg-green-900/30 text-green-300"
+              : "bg-amber-900/30 text-amber-300"
+          }`}
+        >
+          Deployment: {securityPosture.deploymentMode}
+        </span>
+        <span
+          className={`rounded-full px-2.5 py-1 ${
+            readinessReport.overallStatus === "ready"
+              ? "bg-green-900/30 text-green-300"
+              : readinessReport.overallStatus === "warning"
+                ? "bg-amber-900/30 text-amber-300"
+                : "bg-red-900/30 text-red-300"
+          }`}
+        >
+          Bring-up readiness: {readinessReport.overallStatus}
+        </span>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -62,6 +87,7 @@ export default async function DashboardPage() {
         <SuggestedTasksCard tasks={snapshot.tasks} limit={5} compact />
         <CostRiskCard report={snapshot.costReport} compact />
         <ApprovalQueueCard approvals={snapshot.approvalRequests} limit={5} />
+        <SecurityPostureCard posture={securityPosture} compact />
       </div>
     </div>
   );

@@ -12,6 +12,8 @@ import {
   withOpenClawGateway,
   type OpenClawHelloOk,
 } from "./openclaw-client";
+import { recordSecurityEvent } from "@/lib/security/events";
+import { evaluateRuntimeRequestedTools, getRuntimeToolPolicy } from "@/lib/security/runtime-policy";
 
 type OpenClawSessionEntry = {
   key?: string;
@@ -73,6 +75,7 @@ export function createOpenClawBridge(): RuntimeBridge {
           url: config.url,
           agentId: config.defaultAgentId,
           availableMethods: hello.features.methods,
+          toolPolicy: getRuntimeToolPolicy(),
         };
       } catch (error) {
         return buildDisconnectedStatus(config.url, config.defaultAgentId, error);
@@ -87,6 +90,21 @@ export function createOpenClawBridge(): RuntimeBridge {
     }) {
       const start = Date.now();
       const runtimeAgentId = config.defaultAgentId ?? request.agentId;
+      const toolEvaluation = evaluateRuntimeRequestedTools(request.tools);
+
+      if (toolEvaluation.blockedTools.length > 0) {
+        await recordSecurityEvent({
+          level: "warning",
+          category: "runtime_policy",
+          title: "Runtime tools blocked by policy",
+          description: `Authrix blocked ${toolEvaluation.blockedTools.length} requested runtime tool(s) for the ${request.agentId} agent before calling the live runtime.`,
+          metadata: {
+            agentId: request.agentId,
+            blockedTools: toolEvaluation.blockedTools,
+            provider: "openclaw",
+          },
+        });
+      }
 
       const response = await withOpenClawGateway(config, async (connection) =>
         connection.request<OpenClawAgentResponse>(
@@ -94,7 +112,12 @@ export function createOpenClawBridge(): RuntimeBridge {
           {
             agentId: runtimeAgentId,
             sessionId: request.sessionId,
-            message: buildAgentExecutionMessage(request.agentId, request.input, request.tools),
+            message: buildAgentExecutionMessage(
+              request.agentId,
+              request.input,
+              toolEvaluation.allowedTools,
+              toolEvaluation.blockedTools
+            ),
             timeout: Math.max(1, Math.ceil(config.timeoutMs / 1000)),
           },
           { expectFinal: true }
@@ -110,6 +133,8 @@ export function createOpenClawBridge(): RuntimeBridge {
           timestamp: new Date().toISOString(),
           sessionId: request.sessionId,
           provider: "openclaw",
+          allowedTools: toolEvaluation.allowedTools,
+          blockedTools: toolEvaluation.blockedTools.map((entry) => entry.tool),
         },
       };
     },
@@ -174,10 +199,39 @@ export function createOpenClawBridge(): RuntimeBridge {
       args: Record<string, unknown>;
       sessionId?: string;
     }): Promise<ToolResult> {
+      const evaluation = evaluateRuntimeRequestedTools([request.tool]);
+      const blocked = evaluation.blockedTools[0];
+
+      if (blocked) {
+        await recordSecurityEvent({
+          level: "warning",
+          category: "runtime_policy",
+          title: "Runtime tool invocation blocked",
+          description: `Authrix blocked the live runtime tool "${request.tool}" because ${blocked.reason}.`,
+          metadata: {
+            tool: request.tool,
+            reason: blocked.reason,
+            provider: "openclaw",
+          },
+        });
+
+        return {
+          success: false,
+          output: null,
+          error: `Runtime tool "${request.tool}" was blocked by policy: ${blocked.reason}.`,
+          metadata: {
+            blockedByPolicy: true,
+          },
+        };
+      }
+
       return {
         success: false,
         output: null,
         error: `Runtime tool invocation is not mapped yet for "${request.tool}".`,
+        metadata: {
+          allowedByPolicy: true,
+        },
       };
     },
 
@@ -230,6 +284,7 @@ function buildDisconnectedStatus(
     checkedAt: new Date().toISOString(),
     url,
     agentId,
+    toolPolicy: getRuntimeToolPolicy(),
   };
 }
 
@@ -269,7 +324,8 @@ function normalizeTimestamp(value: number | string | undefined): string {
 function buildAgentExecutionMessage(
   agentId: string,
   input: unknown,
-  tools?: string[]
+  tools?: string[],
+  blockedTools?: Array<{ tool: string; reason: string }>
 ): string {
   return [
     `You are running as the Authrix "${agentId}" product agent inside the autonomous runtime.`,
@@ -277,6 +333,9 @@ function buildAgentExecutionMessage(
     tools && tools.length > 0
       ? `Tools requested for this run: ${tools.join(", ")}.`
       : "No tool usage is required unless the runtime configuration explicitly enables it.",
+    blockedTools && blockedTools.length > 0
+      ? `The following requested tools are blocked by Authrix policy and must not be used: ${blockedTools.map((entry) => `${entry.tool} (${entry.reason})`).join(", ")}.`
+      : "No requested tools were blocked by Authrix runtime policy for this turn.",
     "Use the following input JSON as the source of truth for this turn:",
     JSON.stringify(input, null, 2),
   ].join("\n\n");

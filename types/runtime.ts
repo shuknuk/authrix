@@ -10,6 +10,8 @@ export interface ExecutionMetadata {
   timestamp: string;
   sessionId?: string;
   provider: RuntimeProvider;
+  allowedTools?: string[];
+  blockedTools?: string[];
 }
 
 export interface SessionConfig {
@@ -33,6 +35,7 @@ export interface ToolResult {
   success: boolean;
   output: unknown;
   error?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export type RuntimeProvider = "mock" | "openclaw";
@@ -47,6 +50,12 @@ export interface RuntimeStatus {
   url?: string;
   agentId?: string;
   availableMethods?: string[];
+  toolPolicy?: {
+    allowedTools: string[];
+    blockedTools: string[];
+    hostLevelToolsAllowed: boolean;
+    mode: "default-deny-host" | "allowlist" | "mixed";
+  };
 }
 
 export type JobState = "queued" | "running" | "completed" | "failed";

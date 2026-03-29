@@ -6,7 +6,9 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "check:worker-box": "node scripts/check-worker-box.mjs",
+    "smoke:worker-box": "node scripts/smoke-worker-box.mjs"
   },
   "dependencies": {
     "@auth0/nextjs-auth0": "^4.16.1",

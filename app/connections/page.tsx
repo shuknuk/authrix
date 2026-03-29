@@ -1,4 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
+import { DeploymentReadinessCard } from "@/components/dashboard/deployment-readiness-card";
+import { DeploymentSmokeTestCard } from "@/components/dashboard/deployment-smoke-test-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import {
@@ -7,14 +9,33 @@ import {
 } from "@/lib/auth/token-vault";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
+import {
+  getDeploymentReadinessReport,
+  runDeploymentSmokeTest,
+} from "@/lib/deployment/readiness";
 import { getRuntimeBridge } from "@/lib/runtime/bridge";
+import { getSecurityPosture } from "@/lib/security/status";
+import { SecurityPostureCard } from "@/components/dashboard/security-posture-card";
+import { listSecurityEvents } from "@/lib/security/events";
+import { SecurityEventsCard } from "@/components/dashboard/security-events-card";
 
 export default async function ConnectionsPage() {
   await requireSession("/connections");
 
-  const [snapshot, runtimeStatus] = await Promise.all([
+  const [
+    snapshot,
+    runtimeStatus,
+    securityPosture,
+    securityEvents,
+    readinessReport,
+    smokeReport,
+  ] = await Promise.all([
     getWorkspaceSnapshot(),
     getRuntimeBridge().getStatus(),
+    Promise.resolve(getSecurityPosture()),
+    listSecurityEvents(6),
+    getDeploymentReadinessReport(),
+    runDeploymentSmokeTest(),
   ]);
   const integrations = snapshot.integrations;
   const githubConnectionName = getGitHubConnectionName();
@@ -28,6 +49,10 @@ export default async function ConnectionsPage() {
         title="Connections"
         description="Manage external systems that Authrix can observe or act on through a mediated backend layer."
       />
+
+      <SecurityPostureCard posture={securityPosture} />
+      <DeploymentReadinessCard report={readinessReport} />
+      <DeploymentSmokeTestCard report={smokeReport} />
 
       <CardShell
         title="Autonomous Runtime"
@@ -57,6 +82,12 @@ export default async function ConnectionsPage() {
                 Available methods: {runtimeStatus.availableMethods.length}
               </p>
             ) : null}
+            <p className="mt-2 text-[11px] text-zinc-600">
+              Connect scopes: {securityPosture.runtimeConnectScopes.join(", ")}
+            </p>
+            <p className="mt-2 text-[11px] text-zinc-600">
+              Tool policy: {runtimeStatus.toolPolicy?.mode ?? "unknown"}
+            </p>
           </div>
           <span
             className={`rounded-full px-3 py-1 text-xs ${
@@ -206,6 +237,8 @@ export default async function ConnectionsPage() {
           </div>
         )}
       </CardShell>
+
+      <SecurityEventsCard events={securityEvents} limit={6} />
     </div>
   );
 }

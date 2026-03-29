@@ -40,6 +40,11 @@ export async function executeGitHubApprovalAction(
     return {
       success: false,
       message: getExternalWritePolicyMessage("GitHub"),
+      metadata: {
+        policyBlocked: true,
+        policy: "external-write-policy",
+        target: "GitHub",
+      },
     };
   }
 
@@ -55,6 +60,10 @@ export async function executeGitHubApprovalAction(
       message: allowGitHubPersonalAccessTokenFallback()
         ? "GitHub write execution requires a Token Vault GitHub connection or a configured personal access token."
         : "GitHub write execution requires a Token Vault GitHub connection. Personal access token fallback is disabled by policy.",
+      metadata: {
+        missingCredential: true,
+        target: "GitHub",
+      },
     };
   }
 

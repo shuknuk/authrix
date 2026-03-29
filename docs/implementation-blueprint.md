@@ -482,6 +482,7 @@ Deliverables:
 - explicit review of host-level write and exec paths
 - safer secret and environment handling for deployed Authrix instances
 - clearer runtime health and failure-state visibility for operators
+- persisted security events for blocked or policy-sensitive runtime behavior
 
 Definition of done:
 - Authrix has a clear preferred deployment trust boundary
@@ -490,7 +491,7 @@ Definition of done:
 - security documentation and implementation agree on the guardrail model
 
 Status:
-- not started
+- complete
 
 ### Phase 7: Functional Product Readiness
 
@@ -503,9 +504,10 @@ Deliverables:
 - startup and restart guidance
 - connection onboarding for the main product path
 - first real deployment smoke test checklist
+- operator-visible deployment readiness and smoke-test surfaces
 
 Status:
-- not started
+- complete
 
 ### Phase 8: Broader Operational Depth
 
@@ -545,6 +547,7 @@ Current status under the corrected product interpretation:
 - Phase 3: complete in hybrid form
 - Phase 4: complete
 - Phase 5: complete
-- Phase 6: not started
+- Phase 6: complete
+- Phase 7: complete
 
-Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation that is ready for deeper product expansion, with the reused runtime lineage kept internal to the product rather than exposed as a separate dependency narrative.
+Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation with baseline deployment guardrails, runtime tool policy enforcement, operator-visible security posture, and a real worker-box bring-up path. The reused runtime lineage remains internal to the product rather than exposed as a separate dependency narrative.

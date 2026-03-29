@@ -8,6 +8,7 @@ import {
   updateApprovalRequest,
 } from "@/lib/data/workspace";
 import { executeApprovalAction } from "@/lib/actions/execute-approval";
+import { recordSecurityEvent } from "@/lib/security/events";
 
 export async function GET() {
   if (isAuthConfigured) {
@@ -70,6 +71,21 @@ export async function PATCH(request: NextRequest) {
     if (latestApproval) {
       const execution = await executeApprovalAction(latestApproval);
       const finalizedApproval = await recordApprovalExecutionResult(id, execution);
+
+      if (execution.metadata?.policyBlocked === true) {
+        await recordSecurityEvent({
+          level: "warning",
+          category: "approval_policy",
+          title: "Approved write blocked by policy",
+          description: execution.message,
+          metadata: {
+            approvalId: id,
+            actionKind: latestApproval.actionKind,
+            target: latestApproval.affectedSystem,
+          },
+        });
+      }
+
       return NextResponse.json(finalizedApproval ?? approval);
     }
   }
