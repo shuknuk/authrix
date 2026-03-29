@@ -1,9 +1,12 @@
 import { CostRiskCard } from "@/components/dashboard/cost-risk-card";
 import { PageHeader } from "@/components/ui/page-header";
-import { getCostReport } from "@/lib/data/workspace";
+import { requireSession } from "@/lib/auth/session";
+import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 
 export default async function CostsPage() {
-  const report = await getCostReport();
+  await requireSession("/costs");
+
+  const snapshot = await getWorkspaceSnapshot();
 
   return (
     <div className="space-y-6">
@@ -11,7 +14,7 @@ export default async function CostsPage() {
         title="Costs"
         description="Spend visibility, anomaly detection, and risk framing for the systems Authrix monitors."
       />
-      <CostRiskCard report={report} />
+      <CostRiskCard report={snapshot.costReport} />
     </div>
   );
 }

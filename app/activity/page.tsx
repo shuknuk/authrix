@@ -1,9 +1,12 @@
 import { ActivityTimelineCard } from "@/components/dashboard/activity-timeline-card";
 import { PageHeader } from "@/components/ui/page-header";
-import { getTimelineEntries } from "@/lib/data/workspace";
+import { requireSession } from "@/lib/auth/session";
+import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 
 export default async function ActivityPage() {
-  const timeline = await getTimelineEntries();
+  await requireSession("/activity");
+
+  const snapshot = await getWorkspaceSnapshot();
 
   return (
     <div className="space-y-6">
@@ -11,7 +14,7 @@ export default async function ActivityPage() {
         title="Activity"
         description="A unified timeline of normalized engineering events and the records Authrix builds from them."
       />
-      <ActivityTimelineCard entries={timeline} />
+      <ActivityTimelineCard entries={snapshot.timeline} />
     </div>
   );
 }

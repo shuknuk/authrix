@@ -1,10 +1,14 @@
 import { CardShell } from "@/components/ui/card-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { getIntegrationStatuses } from "@/lib/data/workspace";
+import { requireSession } from "@/lib/auth/session";
+import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 
 export default async function ConnectionsPage() {
-  const integrations = await getIntegrationStatuses();
+  await requireSession("/connections");
+
+  const snapshot = await getWorkspaceSnapshot();
+  const integrations = snapshot.integrations;
 
   return (
     <div className="space-y-6">

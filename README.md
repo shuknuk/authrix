@@ -22,3 +22,16 @@ Authrix enforces strict boundaries between agents.
 
 See `/docs/agent-security-architecture.md` for details.
 
+## Local Auth0 Setup
+
+1. Copy `.env.example` to `.env.local`.
+2. Fill in your Auth0 tenant values.
+3. Generate `AUTH0_SECRET` with a 32-byte hex string.
+4. In the Auth0 dashboard, configure:
+   - Allowed Callback URLs: `http://localhost:3000/auth/callback`
+   - Allowed Logout URLs: `http://localhost:3000`
+   - Allowed Web Origins: `http://localhost:3000`
+   - Application Login URI: `http://localhost:3000/auth/login`
+
+Authrix uses a `Regular Web App` in Auth0 and keeps delegated third-party access on the backend.
+

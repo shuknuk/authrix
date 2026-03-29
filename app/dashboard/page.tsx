@@ -3,20 +3,13 @@ import { CostRiskCard } from "@/components/dashboard/cost-risk-card";
 import { SuggestedTasksCard } from "@/components/dashboard/suggested-tasks-card";
 import { WeeklySummaryCard } from "@/components/dashboard/weekly-summary-card";
 import { PageHeader } from "@/components/ui/page-header";
-import {
-  getApprovalRequests,
-  getCostReport,
-  getEngineeringSummary,
-  getSuggestedTasks,
-} from "@/lib/data/workspace";
+import { requireSession } from "@/lib/auth/session";
+import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 
 export default async function DashboardPage() {
-  const [summary, tasks, costs, approvals] = await Promise.all([
-    getEngineeringSummary(),
-    getSuggestedTasks(),
-    getCostReport(),
-    getApprovalRequests(),
-  ]);
+  await requireSession("/dashboard");
+
+  const snapshot = await getWorkspaceSnapshot();
 
   return (
     <div className="space-y-6">
@@ -26,10 +19,10 @@ export default async function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <WeeklySummaryCard summary={summary} />
-        <SuggestedTasksCard tasks={tasks} limit={5} compact />
-        <CostRiskCard report={costs} compact />
-        <ApprovalQueueCard approvals={approvals} limit={5} />
+        <WeeklySummaryCard summary={snapshot.engineeringSummary} />
+        <SuggestedTasksCard tasks={snapshot.tasks} limit={5} compact />
+        <CostRiskCard report={snapshot.costReport} compact />
+        <ApprovalQueueCard approvals={snapshot.approvalRequests} limit={5} />
       </div>
     </div>
   );

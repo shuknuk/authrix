@@ -10,6 +10,10 @@ import type {
   CostReport,
   CostBreakdownItem,
   CostAnomaly,
+  DecisionRecord,
+  MeetingArtifact,
+  RiskAlert,
+  SourceDocument,
 } from "./domain";
 
 // --- Engineer agent ---
@@ -34,6 +38,31 @@ export interface TaskAgentOutput {
   tasks: SuggestedTask[];
 }
 
+// --- Docs agent ---
+
+export interface DocsAgentInput {
+  sourceDocument: SourceDocument;
+  engineeringSummary?: EngineeringSummary;
+}
+
+export interface DocsAgentOutput {
+  artifact: MeetingArtifact;
+  decisions: DecisionRecord[];
+}
+
+// --- Workflow agent ---
+
+export interface WorkflowAgentInput {
+  engineeringSummary?: EngineeringSummary;
+  meetingArtifacts?: MeetingArtifact[];
+  existingTasks?: SuggestedTask[];
+}
+
+export interface WorkflowAgentOutput {
+  tasks: SuggestedTask[];
+  alerts: RiskAlert[];
+}
+
 // --- DevOps agent ---
 
 export interface DevOpsAgentInput {
@@ -50,7 +79,7 @@ export interface DevOpsAgentOutput {
 
 // --- Generic agent execution wrapper ---
 
-export type AgentId = "engineer" | "task" | "devops";
+export type AgentId = "engineer" | "task" | "docs" | "workflow" | "devops";
 
 export interface AgentRunResult<T> {
   agentId: AgentId;

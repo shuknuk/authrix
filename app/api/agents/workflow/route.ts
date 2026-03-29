@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOptionalSession } from "@/lib/auth/session";
 import { isAuthConfigured } from "@/lib/auth/auth0";
-import { getCostReport } from "@/lib/data/workspace";
+import { getRiskAlerts, getSuggestedTasks } from "@/lib/data/workspace";
 
 export async function GET() {
   if (isAuthConfigured) {
@@ -11,6 +11,10 @@ export async function GET() {
     }
   }
 
-  const report = await getCostReport();
-  return NextResponse.json(report);
+  const [tasks, alerts] = await Promise.all([
+    getSuggestedTasks(),
+    getRiskAlerts(),
+  ]);
+
+  return NextResponse.json({ tasks, alerts });
 }

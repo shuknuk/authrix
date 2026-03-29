@@ -17,6 +17,46 @@ export interface GitHubEvent {
   metadata: Record<string, unknown>;
 }
 
+export type SourceSystem =
+  | "github"
+  | "meeting_upload"
+  | "notes"
+  | "billing"
+  | "manual";
+
+export interface SourceEvent {
+  id: string;
+  workspaceId: string;
+  sourceSystem: SourceSystem;
+  eventType: string;
+  title: string;
+  description: string;
+  occurredAt: string;
+  actor?: string;
+  url?: string;
+  externalId?: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface TranscriptEntry {
+  speaker: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface SourceDocument {
+  id: string;
+  workspaceId: string;
+  sourceSystem: SourceSystem;
+  documentType: "transcript" | "notes" | "summary";
+  title: string;
+  createdAt: string;
+  content: string;
+  participants: string[];
+  transcript?: TranscriptEntry[];
+  metadata: Record<string, unknown>;
+}
+
 // --- Normalized engineering activity ---
 
 export type ActivitySource = "github" | "manual";
@@ -101,6 +141,54 @@ export interface SuggestedTask {
   createdAt: string;
 }
 
+export interface MeetingActionItem {
+  id: string;
+  title: string;
+  description: string;
+  owner?: string;
+  dueDate?: string;
+  status: "identified" | "suggested" | "approved" | "completed";
+}
+
+export interface MeetingArtifact {
+  id: string;
+  workspaceId: string;
+  sourceDocumentId: string;
+  title: string;
+  generatedAt: string;
+  summary: string;
+  notes: string[];
+  participants: string[];
+  actionItems: MeetingActionItem[];
+  decisions: string[];
+  openQuestions: string[];
+}
+
+export interface DecisionRecord {
+  id: string;
+  workspaceId: string;
+  title: string;
+  summary: string;
+  participants: string[];
+  status: "open" | "accepted" | "superseded";
+  sourceAgentId: string;
+  sourceDocumentId?: string;
+  createdAt: string;
+  relatedTaskIds: string[];
+}
+
+export interface RiskAlert {
+  id: string;
+  workspaceId: string;
+  title: string;
+  description: string;
+  severity: RiskLevel;
+  category: "engineering" | "workflow" | "operations";
+  sourceAgentId: string;
+  createdAt: string;
+  relatedRecordIds: string[];
+}
+
 // --- Cost / risk (devops agent output) ---
 
 export interface CostBreakdownItem {
@@ -141,9 +229,26 @@ export interface ApprovalRequest {
   riskLevel: RiskLevel;
   status: ApprovalStatus;
   requestedAt: string;
+  proposedActionId?: string;
   resolvedAt?: string;
   resolvedBy?: string;
   executionResult?: string;
+  relatedRecordIds?: string[];
+}
+
+export interface ProposedAction {
+  id: string;
+  workspaceId: string;
+  actionKind: string;
+  title: string;
+  description: string;
+  targetSystem: string;
+  riskLevel: RiskLevel;
+  sourceAgentId: string;
+  status: "proposed" | "approved" | "rejected" | "executed";
+  createdAt: string;
+  approvalRequestId?: string;
+  relatedRecordIds: string[];
 }
 
 // --- Timeline ---
@@ -156,18 +261,33 @@ export interface TimelineEntry {
   source: string;
   timestamp: string;
   metadata: Record<string, unknown>;
+  relatedRecordIds?: string[];
 }
 
 // --- Audit ---
 
 export interface AuditEvent {
   id: string;
+  workspaceId: string;
   action: string;
   actor: string;
   target: string;
   details: string;
   timestamp: string;
   metadata: Record<string, unknown>;
+  relatedRecordIds?: string[];
+}
+
+export interface AgentRunRecord {
+  id: string;
+  workspaceId: string;
+  agentId: string;
+  status: "completed" | "failed";
+  startedAt: string;
+  completedAt?: string;
+  inputSummary: string;
+  outputSummary: string;
+  relatedRecordIds: string[];
 }
 
 // --- Workspace ---
@@ -185,4 +305,23 @@ export interface IntegrationStatus {
   connectedAt?: string;
   scopes?: string[];
   status: "active" | "inactive" | "error";
+}
+
+export interface WorkspaceSnapshot {
+  workspace: Workspace;
+  integrations: IntegrationStatus[];
+  sourceEvents: SourceEvent[];
+  sourceDocuments: SourceDocument[];
+  engineeringActivities: EngineeringActivity[];
+  engineeringSummary: EngineeringSummary;
+  meetingArtifacts: MeetingArtifact[];
+  decisionRecords: DecisionRecord[];
+  tasks: SuggestedTask[];
+  costReport: CostReport;
+  riskAlerts: RiskAlert[];
+  proposedActions: ProposedAction[];
+  approvalRequests: ApprovalRequest[];
+  auditEvents: AuditEvent[];
+  agentRuns: AgentRunRecord[];
+  timeline: TimelineEntry[];
 }
