@@ -46,6 +46,29 @@ export async function PUT(request: NextRequest) {
     );
   }
 
+  if (
+    !Number.isFinite(body.totalSpend) ||
+    body.breakdown.some(
+      (entry) =>
+        !entry ||
+        typeof entry.service !== "string" ||
+        !Number.isFinite(entry.amount) ||
+        !Number.isFinite(entry.change)
+    ) ||
+    body.anomalies.some(
+      (entry) =>
+        !entry ||
+        typeof entry.service !== "string" ||
+        typeof entry.description !== "string" ||
+        !entry.detectedAt
+    )
+  ) {
+    return NextResponse.json(
+      { error: "Cost report contains invalid numeric or anomaly values." },
+      { status: 400 }
+    );
+  }
+
   const snapshot = await updateWorkspaceCostReport(body as CostReport);
   return NextResponse.json({
     report: snapshot.costReport,

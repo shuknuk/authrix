@@ -1,4 +1,5 @@
 import type { RuntimeProvider } from "@/types/runtime";
+import { getRuntimeConnectScopes } from "@/lib/security/config";
 
 const DEFAULT_OPENCLAW_GATEWAY_URL = "ws://127.0.0.1:18789";
 const DEFAULT_OPENCLAW_TIMEOUT_MS = 30_000;
@@ -10,6 +11,7 @@ export interface OpenClawRuntimeConfig {
   password?: string;
   timeoutMs: number;
   defaultAgentId?: string;
+  connectScopes: string[];
 }
 
 export function resolveRuntimeProvider(): RuntimeProvider {
@@ -25,6 +27,7 @@ export function resolveOpenClawRuntimeConfig(): OpenClawRuntimeConfig {
     password: readStringEnv("OPENCLAW_GATEWAY_PASSWORD"),
     timeoutMs: readNumberEnv("OPENCLAW_GATEWAY_TIMEOUT_MS") ?? DEFAULT_OPENCLAW_TIMEOUT_MS,
     defaultAgentId: readStringEnv("OPENCLAW_AGENT_ID"),
+    connectScopes: getRuntimeConnectScopes(),
   };
 }
 

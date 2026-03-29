@@ -73,6 +73,21 @@ This changes how phases are evaluated:
 - a phase is not complete just because the UI exists
 - a phase is complete when the product surface is backed by real infrastructure or an honest fallback with a clear migration path
 
+## Security Hardening Principles
+
+Authrix should treat host security and runtime guardrails as product requirements, not optional polish.
+
+Security priorities beyond OAuth:
+- dedicated worker-machine deployment should be the preferred operating model
+- Auth0 and Token Vault should handle delegated identity and token custody
+- sandbox boundaries should constrain host-level execution
+- approvals should guard external writes and high-risk host actions
+- tool execution should move toward least privilege, allowlists, and path-scoped access
+
+Important rule:
+- Auth0 secures delegated access to external systems
+- sandboxing, backend mediation, and host isolation secure the runtime and the machine
+
 ## Runtime Boundary
 
 Authrix product code should talk to the runtime through a typed internal boundary.
@@ -134,6 +149,12 @@ Security rules:
 - all third-party access flows through a mediated backend layer
 - all write actions are approval-aware
 - sensitive actions must be auditable
+
+Deployment and hardening rules:
+- dedicated worker-box deployment is the preferred trust boundary
+- personal laptops are not the primary target deployment model
+- host-level execution should be sandboxed or heavily constrained
+- product data paths should stay separated from arbitrary host paths
 
 ### 4. Control Tower
 
@@ -275,13 +296,16 @@ The product priorities are:
 4. Authrix-owned runtime engine and runtime health visibility
 5. durable persistence and background execution
 6. mediated approval-backed writes
-7. UI polish on top of live behavior
+7. sandbox hardening and safe deployment posture
+8. broader autonomous product depth
+9. UI polish on top of live behavior
 
 This means:
 - Auth0 is not deferred
 - runtime internalization is not deferred
 - GitHub is not just a mock integration
 - persistence is required before calling the infrastructure layer complete
+- sandbox hardening is not treated as a cosmetic future enhancement
 
 ## Branching and Collaboration Model
 
@@ -445,6 +469,72 @@ Deliverables:
 Status:
 - complete
 
+### Phase 6: Guardrails, Sandboxing, and Safe Deployment
+
+Goal:
+- harden Authrix so the product can be run responsibly on a dedicated worker machine
+
+Deliverables:
+- documented dedicated-worker deployment model
+- execution tiers for read-only, product-write, external-write, and host-level actions
+- sandbox posture for runtime-backed execution
+- narrowed tool allowlists and path boundaries
+- explicit review of host-level write and exec paths
+- safer secret and environment handling for deployed Authrix instances
+- clearer runtime health and failure-state visibility for operators
+
+Definition of done:
+- Authrix has a clear preferred deployment trust boundary
+- host-level execution is no longer treated as an unbounded default
+- risky runtime behavior is policy-aware and auditable
+- security documentation and implementation agree on the guardrail model
+
+Status:
+- not started
+
+### Phase 7: Functional Product Readiness
+
+Goal:
+- make Authrix installable and bring-up-ready as a real product on a worker box
+
+Deliverables:
+- end-to-end local or worker-box install flow
+- stable environment setup and runbook
+- startup and restart guidance
+- connection onboarding for the main product path
+- first real deployment smoke test checklist
+
+Status:
+- not started
+
+### Phase 8: Broader Operational Depth
+
+Goal:
+- deepen automation and product breadth after the secure deployment path exists
+
+Deliverables:
+- richer integrations
+- stronger autonomy loops
+- broader ops and workflow coverage
+- more complete drift detection
+
+Status:
+- not started
+
+### Phase 9: UI Polish and Presentation
+
+Goal:
+- improve presentation, onboarding, and visual polish after the functional product path is strong
+
+Deliverables:
+- refined control tower UX
+- improved setup guidance
+- polished onboarding and marketing surfaces
+- stronger product storytelling for demos and launch
+
+Status:
+- not started
+
 ## Current Status
 
 Current status under the corrected product interpretation:
@@ -455,5 +545,6 @@ Current status under the corrected product interpretation:
 - Phase 3: complete in hybrid form
 - Phase 4: complete
 - Phase 5: complete
+- Phase 6: not started
 
 Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation that is ready for deeper product expansion, with the reused runtime lineage kept internal to the product rather than exposed as a separate dependency narrative.

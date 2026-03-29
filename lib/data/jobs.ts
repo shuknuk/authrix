@@ -1,10 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import { refreshWorkspaceSnapshot } from "@/lib/data/workspace";
+import { AUTHRIX_DATA_DIR, resolveAuthrixDataPath } from "@/lib/security/paths";
 import type { JobStatus } from "@/types/runtime";
 
-const DATA_DIR = path.join(process.cwd(), ".authrix-data");
-const JOBS_PATH = path.join(DATA_DIR, "jobs.json");
+const DATA_DIR = AUTHRIX_DATA_DIR;
+const JOBS_PATH = resolveAuthrixDataPath("jobs.json");
 
 let jobsCache: JobStatus[] | null = null;
 let jobsPromise: Promise<JobStatus[]> | null = null;

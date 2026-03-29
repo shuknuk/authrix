@@ -30,10 +30,35 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  const body = await request.json();
-  const { id, status } = body as { id: string; status: "approved" | "rejected" };
+  const body = (await request.json()) as {
+    id?: unknown;
+    status?: unknown;
+  };
+  const id = typeof body.id === "string" ? body.id : null;
+  const status =
+    body.status === "approved" || body.status === "rejected" ? body.status : null;
+
+  if (!id || !status) {
+    return NextResponse.json(
+      { error: "A valid approval id and status are required." },
+      { status: 400 }
+    );
+  }
+
   const actor =
     session?.user.name ?? session?.user.email ?? "current-user";
+  const existingApproval = await getApprovalRequestById(id);
+
+  if (!existingApproval) {
+    return NextResponse.json({ error: "Approval not found" }, { status: 404 });
+  }
+
+  if (existingApproval.status !== "pending") {
+    return NextResponse.json(
+      { error: `Approval ${id} has already been resolved.` },
+      { status: 409 }
+    );
+  }
 
   const approval = await updateApprovalRequest(id, status, actor);
   if (!approval) {

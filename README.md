@@ -20,7 +20,30 @@ Authrix enforces strict boundaries between agents.
 - outputs are passed between agents instead of raw context
 - all write actions require explicit user approval
 
+Auth0 is the delegated identity layer, not the entire security model. Authrix also relies on:
+- backend-mediated execution
+- approval gating for writes
+- dedicated worker-box deployment as the preferred trust boundary
+- sandbox and host guardrails for autonomous runtime behavior
+
 See `/docs/agent-security-architecture.md` for details.
+
+## Guardrails and Deployment
+
+Authrix is being designed for a dedicated worker machine, VM, or VPS instead of a normal personal laptop.
+
+Why:
+- always-on autonomous products should minimize host-machine blast radius
+- personal devices usually contain browser sessions, password managers, SSH keys, and unrelated private data
+- Auth0 secures delegated access to external systems, but it does not secure the entire host by itself
+
+Baseline guardrails already present in the codebase:
+- external writes can be disabled by policy
+- manual token fallbacks are now explicit instead of assumed
+- local generated docs and persisted state stay inside `.authrix-data`
+- approval execution rejects already-resolved requests
+
+The deeper sandbox hardening phase will build on top of these guardrails instead of replacing them later.
 
 ## Local Auth0 Setup
 
@@ -51,6 +74,8 @@ Authrix now supports a real GitHub ingestion path with clean fallbacks.
 3. Set `AUTH0_GITHUB_CONNECTION_NAME` to your Auth0 GitHub connection name.
 4. Optional: set `AUTH0_GITHUB_CONNECTION_SCOPES` if you want scopes other than `repo,read:org`.
 5. Optional: add `AUTH0_TOKEN_VAULT_GITHUB_ACCESS_TOKEN` only if you need a local override during development.
+6. Optional: set `AUTHRIX_ALLOW_PERSONAL_ACCESS_TOKEN_FALLBACK=true` if you want Authrix to use `GITHUB_PERSONAL_ACCESS_TOKEN` as a development fallback.
+7. Optional: set `AUTHRIX_ALLOW_TOKEN_VAULT_GITHUB_ACCESS_TOKEN_OVERRIDE=true` if you want the manual Token Vault override env to be usable.
 
 If no live GitHub configuration is present, Authrix stays in mock mode and labels that clearly in the Connections page. When Auth0 is configured, the Connections page exposes a `Connect GitHub With Auth0` action that uses the SDK's built-in `/auth/connect` flow.
 
@@ -63,9 +88,23 @@ The runtime layer in this repo is being built by adapting proven OpenClaw infras
 By default, the app uses the local mock runtime path so the dashboard stays deterministic when live runtime behavior is unavailable. For runtime-backed execution during development:
 
 1. Set `AUTHRIX_RUNTIME=openclaw`.
-2. Configure `OPENCLAW_GATEWAY_URL`.
-3. Add `OPENCLAW_GATEWAY_TOKEN` or `OPENCLAW_GATEWAY_PASSWORD` if your runtime transport requires credentials.
-4. Optional: set `OPENCLAW_AGENT_ID` if you want all Authrix runtime calls to target one configured runtime worker.
+2. Set `AUTHRIX_DEPLOYMENT_MODE=worker-box` when you are preparing a dedicated worker deployment.
+3. Configure `OPENCLAW_GATEWAY_URL`.
+4. Add `OPENCLAW_GATEWAY_TOKEN` or `OPENCLAW_GATEWAY_PASSWORD` if your runtime transport requires credentials.
+5. Optional: set `OPENCLAW_AGENT_ID` if you want all Authrix runtime calls to target one configured runtime worker.
+6. Optional: adjust `AUTHRIX_RUNTIME_CONNECT_SCOPES` if the runtime transport should negotiate a narrower scope set.
+
+## External Write Policy
+
+Mediated write execution now has an explicit policy switch.
+
+- `AUTHRIX_ALLOW_EXTERNAL_WRITES=true`
+  Allows approved external writes such as GitHub issue creation or Notion publishing.
+
+- unset or `false`
+  Blocks those external writes and returns a policy message instead.
+
+By default, production-style environments should set this explicitly on a dedicated worker deployment. Local development can keep it permissive while testing.
 
 Engineering note: some internal runtime modules still use gateway-shaped transport and configuration naming while the reused runtime foundation is being folded more deeply into Authrix. That is an implementation detail, not the product architecture.
 

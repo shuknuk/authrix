@@ -1,9 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { AUTHRIX_DATA_DIR, resolveAuthrixDataPath } from "@/lib/security/paths";
 import type { WorkspaceSnapshot } from "@/types/domain";
 
-const DATA_DIR = path.join(process.cwd(), ".authrix-data");
-const SNAPSHOT_PATH = path.join(DATA_DIR, "workspace-state.json");
+const DATA_DIR = AUTHRIX_DATA_DIR;
+const SNAPSHOT_PATH = resolveAuthrixDataPath("workspace-state.json");
 
 let cache: WorkspaceSnapshot | null = null;
 let cachePromise: Promise<WorkspaceSnapshot | null> | null = null;
