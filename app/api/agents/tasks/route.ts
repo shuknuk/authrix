@@ -1,23 +1,16 @@
 import { NextResponse } from "next/server";
-import { engineerAgent } from "@/lib/agents/engineer";
-import { taskAgent } from "@/lib/agents/task";
-import { mockGitHubEvents, normalizeGitHubEvents } from "@/lib/mock/github-activity";
-import type { EngineerAgentInput } from "@/types/agents";
+import { getOptionalSession } from "@/lib/auth/session";
+import { isAuthConfigured } from "@/lib/auth/auth0";
+import { getSuggestedTasks } from "@/lib/data/workspace";
 
 export async function GET() {
-  // Output-based chaining: engineer → task
-  const activities = normalizeGitHubEvents(mockGitHubEvents);
+  if (isAuthConfigured) {
+    const session = await getOptionalSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
 
-  const engineerInput: EngineerAgentInput = {
-    activities,
-    period: {
-      start: "2026-03-21T00:00:00Z",
-      end: "2026-03-28T00:00:00Z",
-    },
-  };
-
-  const { summary } = engineerAgent(engineerInput);
-  const { tasks } = taskAgent({ summary });
-
+  const tasks = await getSuggestedTasks();
   return NextResponse.json(tasks);
 }

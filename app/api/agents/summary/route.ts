@@ -1,20 +1,16 @@
 import { NextResponse } from "next/server";
-import { engineerAgent } from "@/lib/agents/engineer";
-import { mockGitHubEvents, normalizeGitHubEvents } from "@/lib/mock/github-activity";
-import type { EngineerAgentInput } from "@/types/agents";
+import { getOptionalSession } from "@/lib/auth/session";
+import { isAuthConfigured } from "@/lib/auth/auth0";
+import { getEngineeringSummary } from "@/lib/data/workspace";
 
 export async function GET() {
-  const activities = normalizeGitHubEvents(mockGitHubEvents);
+  if (isAuthConfigured) {
+    const session = await getOptionalSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
 
-  const input: EngineerAgentInput = {
-    activities,
-    period: {
-      start: "2026-03-21T00:00:00Z",
-      end: "2026-03-28T00:00:00Z",
-    },
-  };
-
-  const result = engineerAgent(input);
-
-  return NextResponse.json(result.summary);
+  const summary = await getEngineeringSummary();
+  return NextResponse.json(summary);
 }

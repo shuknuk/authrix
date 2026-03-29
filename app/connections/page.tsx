@@ -1,70 +1,68 @@
-import type { IntegrationStatus } from "@/types/domain";
+import { CardShell } from "@/components/ui/card-shell";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { requireSession } from "@/lib/auth/session";
+import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 
-// MOCK: will be replaced by real integration state
-const mockIntegrations: IntegrationStatus[] = [
-  {
-    service: "GitHub",
-    connected: true,
-    connectedAt: "2026-03-20T10:00:00Z",
-    scopes: ["repo", "read:org"],
-    status: "active",
-  },
-  {
-    service: "Vercel",
-    connected: false,
-    status: "inactive",
-  },
-  {
-    service: "Supabase",
-    connected: false,
-    status: "inactive",
-  },
-  {
-    service: "Slack",
-    connected: false,
-    status: "inactive",
-  },
-];
+export default async function ConnectionsPage() {
+  await requireSession("/connections");
 
-export default function ConnectionsPage() {
+  const snapshot = await getWorkspaceSnapshot();
+  const integrations = snapshot.integrations;
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Connections</h2>
-      <p className="text-sm text-zinc-500">
-        Manage external integrations. Agents access these services through a
-        mediated backend layer — they never hold raw credentials.
-      </p>
+      <PageHeader
+        title="Connections"
+        description="Manage external systems that Authrix can observe or act on through a mediated backend layer."
+      />
 
-      <div className="space-y-3">
-        {mockIntegrations.map((integration) => (
-          <div
-            key={integration.service}
-            className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 flex items-center justify-between"
-          >
-            <div>
-              <p className="text-sm font-medium text-zinc-200">
-                {integration.service}
-              </p>
-              {integration.connected && integration.scopes && (
-                <p className="text-xs text-zinc-500 mt-1">
-                  Scopes: {integration.scopes.join(", ")}
-                </p>
-              )}
-            </div>
-            <span
-              className={`text-xs px-3 py-1 rounded ${
-                integration.status === "active"
-                  ? "bg-green-900/30 text-green-400"
-                  : integration.status === "error"
-                    ? "bg-red-900/30 text-red-400"
-                    : "bg-zinc-800 text-zinc-500"
-              }`}
-            >
-              {integration.connected ? "Connected" : "Not connected"}
-            </span>
+      <CardShell
+        title="Integration Status"
+        description="Agents never hold raw credentials. All third-party access is routed through controlled backend adapters."
+      >
+        {integrations.length === 0 ? (
+          <EmptyState
+            title="No integrations configured"
+            description="Connect GitHub first, then expand into the rest of the workspace as the product grows."
+          />
+        ) : (
+          <div className="space-y-3">
+            {integrations.map((integration) => (
+              <div
+                key={integration.service}
+                className="flex items-center justify-between rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
+              >
+                <div>
+                  <p className="text-sm font-medium text-zinc-200">
+                    {integration.service}
+                  </p>
+                  {integration.connected && integration.scopes ? (
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Scopes: {integration.scopes.join(", ")}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Waiting for delegated access.
+                    </p>
+                  )}
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs ${
+                    integration.status === "active"
+                      ? "bg-green-900/30 text-green-400"
+                      : integration.status === "error"
+                        ? "bg-red-900/30 text-red-400"
+                        : "bg-zinc-800 text-zinc-500"
+                  }`}
+                >
+                  {integration.connected ? "Connected" : "Not connected"}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        )}
+      </CardShell>
     </div>
   );
 }
