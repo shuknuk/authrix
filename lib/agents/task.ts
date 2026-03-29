@@ -18,30 +18,36 @@ export function taskAgent(input: TaskAgentInput): TaskAgentOutput {
 }
 
 function tasksFromHighlights(summary: EngineeringSummary): SuggestedTask[] {
+  const defaultOwner = getDefaultOwner(summary);
+
   return summary.highlights
     .filter((h) => h.impact === "high")
     .map((h, i) => ({
-      id: `task_highlight_${Date.now()}_${i}`,
+      id: `task-highlight-${toSlug(h.title)}-${i + 1}`,
       title: `Review: ${h.title}`,
       description: `High-impact change requires review. ${h.description}`,
       priority: "high" as TaskPriority,
+      suggestedOwner: defaultOwner,
       source: `Engineering summary highlight`,
       sourceAgentId: "task",
       status: "suggested" as const,
-      createdAt: new Date().toISOString(),
+      createdAt: summary.generatedAt,
     }));
 }
 
 function tasksFromRiskFlags(summary: EngineeringSummary): SuggestedTask[] {
+  const defaultOwner = getDefaultOwner(summary);
+
   return summary.riskFlags.map((flag, i) => ({
-    id: `task_risk_${Date.now()}_${i}`,
+    id: `task-risk-${toSlug(flag.title)}-${i + 1}`,
     title: `Address: ${flag.title}`,
     description: flag.description,
     priority: riskToPriority(flag.severity),
+    suggestedOwner: defaultOwner,
     source: `Engineering summary risk flag`,
     sourceAgentId: "task",
     status: "suggested" as const,
-    createdAt: new Date().toISOString(),
+    createdAt: summary.generatedAt,
   }));
 }
 
@@ -50,15 +56,21 @@ function tasksFromRepoActivity(summary: EngineeringSummary): SuggestedTask[] {
 
   for (const repo of summary.repoBreakdown) {
     if (repo.prCount > 0 && repo.issueCount === 0) {
+      const repoOwner =
+        summary.contributorBreakdown.find((contributor) =>
+          contributor.topRepos.includes(repo.repo)
+        )?.author ?? getDefaultOwner(summary);
+
       tasks.push({
-        id: `task_repo_${Date.now()}_${repo.repo}`,
+        id: `task-repo-${toSlug(repo.repo)}`,
         title: `Triage open work in ${repo.repo}`,
         description: `${repo.prCount} PRs merged but no issues tracked. Consider reviewing for undocumented work.`,
         priority: "low",
+        suggestedOwner: repoOwner,
         source: `Repo activity analysis`,
         sourceAgentId: "task",
         status: "suggested",
-        createdAt: new Date().toISOString(),
+        createdAt: summary.generatedAt,
       });
     }
   }
@@ -75,4 +87,17 @@ function riskToPriority(severity: string): TaskPriority {
     default:
       return "medium";
   }
+}
+
+function getDefaultOwner(summary: EngineeringSummary): string | undefined {
+  return summary.contributorBreakdown[0]?.author;
+}
+
+function toSlug(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
 }

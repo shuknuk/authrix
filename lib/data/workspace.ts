@@ -1,4 +1,5 @@
-import { devopsAgent, docsAgent } from "@/lib/agents";
+import { devopsAgent } from "@/lib/agents";
+import { runDocsPipeline, type DocsPipelineExecution } from "@/lib/data/docs-pipeline";
 import { runEngineerPipeline } from "@/lib/data/engineer-pipeline";
 import { runTaskPipeline } from "@/lib/data/task-pipeline";
 import { runWorkflowPipeline } from "@/lib/data/workflow-pipeline";
@@ -13,6 +14,7 @@ import { mockCostAnomalies, mockCostBreakdown, mockCostTotals } from "@/lib/mock
 import { normalizeGitHubEvents } from "@/lib/mock/github-activity";
 import { mockIntegrations } from "@/lib/mock/integrations";
 import { mockMeetingDocuments } from "@/lib/mock/meeting-documents";
+import { getNotionIntegrationStatus } from "@/lib/notion/service";
 import type {
   AgentRunRecord,
   ApprovalRequest,
@@ -31,11 +33,12 @@ import type {
   SourceEvent,
   SuggestedTask,
   TimelineEntry,
+  TranscriptEntry,
   Workspace,
   WorkspacePipelineStatus,
   WorkspaceSnapshot,
 } from "@/types/domain";
-import type { AgentRunResult, DocsAgentOutput } from "@/types/agents";
+import type { AgentRunResult } from "@/types/agents";
 
 const WORKSPACE_ID = "workspace-authrix";
 const WORKSPACE_NAME = "Authrix";
@@ -52,10 +55,20 @@ type LocalExecution<T> = AgentRunResult<T> & {
 
 interface CreateSourceDocumentInput {
   title: string;
-  content: string;
+  content?: string;
   participants?: string[];
   sourceSystem?: SourceDocument["sourceSystem"];
   documentType?: SourceDocument["documentType"];
+  transcript?: TranscriptEntry[];
+  metadata?: Record<string, unknown>;
+}
+
+interface CreateSourceDocumentResult {
+  snapshot: WorkspaceSnapshot;
+  document: SourceDocument;
+  artifact: MeetingArtifact | null;
+  decisions: DecisionRecord[];
+  tasks: SuggestedTask[];
 }
 
 export async function getWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
@@ -117,6 +130,80 @@ export async function getSourceDocuments(): Promise<SourceDocument[]> {
   return (await getWorkspaceSnapshot()).sourceDocuments;
 }
 
+export async function updateTaskRecord(
+  id: string,
+  input: {
+    status?: SuggestedTask["status"];
+    suggestedOwner?: string | null;
+    dueDate?: string | null;
+  },
+  actor = "current-user"
+): Promise<SuggestedTask | null> {
+  const updatedSnapshot = await updatePersistedWorkspaceSnapshot((snapshot) => {
+    const task = snapshot.tasks.find((item) => item.id === id);
+    if (!task) {
+      return snapshot;
+    }
+
+    if (input.status) {
+      task.status = input.status;
+    }
+
+    if ("suggestedOwner" in input) {
+      task.suggestedOwner = input.suggestedOwner ?? undefined;
+    }
+
+    if ("dueDate" in input) {
+      task.dueDate = input.dueDate ?? undefined;
+    }
+
+    const timestamp = new Date().toISOString();
+    snapshot.auditEvents.unshift({
+      id: `audit-task-${task.id}-${timestamp}`,
+      workspaceId: WORKSPACE_ID,
+      action: "task.updated",
+      actor,
+      target: task.id,
+      details: `${task.title} was updated in workflow follow-through.`,
+      timestamp,
+      metadata: {
+        status: task.status,
+        suggestedOwner: task.suggestedOwner,
+        dueDate: task.dueDate,
+      },
+      relatedRecordIds: [task.id],
+    });
+
+    snapshot.timeline.unshift({
+      id: `timeline-task-${task.id}-${timestamp}`,
+      type: "task_update",
+      title: task.title,
+      description: `${task.title} was updated by ${actor}.`,
+      source: "workflow",
+      timestamp,
+      metadata: {
+        status: task.status,
+        suggestedOwner: task.suggestedOwner,
+        dueDate: task.dueDate,
+      },
+      relatedRecordIds: [task.id],
+    });
+
+    snapshot.state = {
+      ...snapshot.state,
+      refreshedAt: timestamp,
+    };
+
+    return snapshot;
+  });
+
+  if (!updatedSnapshot) {
+    return null;
+  }
+
+  return updatedSnapshot.tasks.find((item) => item.id === id) ?? null;
+}
+
 export async function refreshWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   clearWorkspaceSnapshotCache();
   const snapshot = await buildWorkspaceSnapshot();
@@ -125,24 +212,37 @@ export async function refreshWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
 
 export async function createSourceDocument(
   input: CreateSourceDocumentInput
-): Promise<WorkspaceSnapshot> {
+): Promise<CreateSourceDocumentResult> {
   const snapshot = await getWorkspaceSnapshot();
   const now = new Date().toISOString();
+  const transcript = input.transcript
+    ?.map((entry) => ({
+      ...entry,
+      speaker: entry.speaker.trim(),
+      text: entry.text.trim(),
+    }))
+    .filter((entry) => entry.speaker && entry.text);
+  const content =
+    input.content?.trim() ||
+    transcript?.map((entry) => `${entry.speaker}: ${entry.text}`).join("\n") ||
+    "";
   const document: SourceDocument = {
     id: `source-document-${Date.now()}`,
     workspaceId: WORKSPACE_ID,
     sourceSystem: input.sourceSystem ?? "manual",
-    documentType: input.documentType ?? "notes",
+    documentType: input.documentType ?? (transcript?.length ? "transcript" : "notes"),
     title: input.title,
     createdAt: now,
-    content: input.content,
+    content,
     participants: input.participants ?? [],
+    transcript: transcript?.length ? transcript : undefined,
     metadata: {
       persistedBy: "api",
+      ...(input.metadata ?? {}),
     },
   };
 
-  await saveWorkspaceSnapshot({
+  const persistedSnapshot = await saveWorkspaceSnapshot({
     ...snapshot,
     sourceDocuments: [document, ...snapshot.sourceDocuments],
     state: {
@@ -151,7 +251,25 @@ export async function createSourceDocument(
     },
   });
 
-  return refreshWorkspaceSnapshot();
+  const nextSnapshot = await refreshWorkspaceSnapshot();
+  const artifact =
+    nextSnapshot.meetingArtifacts.find(
+      (candidate) => candidate.sourceDocumentId === document.id
+    ) ?? null;
+
+  return {
+    snapshot: nextSnapshot,
+    document:
+      nextSnapshot.sourceDocuments.find((candidate) => candidate.id === document.id) ??
+      persistedSnapshot.sourceDocuments[0],
+    artifact,
+    decisions: nextSnapshot.decisionRecords.filter(
+      (candidate) => candidate.sourceDocumentId === document.id
+    ),
+    tasks: artifact
+      ? nextSnapshot.tasks.filter((task) => task.source === artifact.title)
+      : [],
+  };
 }
 
 export async function updateWorkspaceCostReport(
@@ -344,8 +462,10 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   const engineeringActivities = getEngineeringActivities(githubIngestion.events);
 
   const engineerRun = await executeEngineerAgent(engineeringActivities);
-  const docsRuns = sourceDocuments.map((document) =>
-    executeDocsAgent(document, engineerRun.output.summary)
+  const docsRuns = await Promise.all(
+    sourceDocuments.map((document) =>
+      executeDocsAgent(document, engineerRun.output.summary)
+    )
   );
 
   const meetingArtifacts = docsRuns.map((run) => run.output.artifact);
@@ -355,10 +475,18 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   const workflowRun = await executeWorkflowAgent(
     engineerRun.output.summary,
     meetingArtifacts,
-    taskRun.output.tasks
+    [
+      ...(existingSnapshot?.tasks ?? []),
+      ...taskRun.output.tasks,
+    ]
   );
 
-  const tasks = sortTasks([...taskRun.output.tasks, ...workflowRun.output.tasks]);
+  const tasks = sortTasks(
+    mergePersistedTasks(
+      [...taskRun.output.tasks, ...workflowRun.output.tasks],
+      existingSnapshot?.tasks ?? []
+    )
+  );
   decisionRecords = linkDecisionsToTasks(decisionRecords, meetingArtifacts, tasks);
 
   const persistedCostReport = existingSnapshot?.costReport;
@@ -390,6 +518,7 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
     refreshedAt,
     githubIntegration: githubIngestion.integration,
     engineerPipeline: engineerRun.pipelineStatus,
+    docsRuns,
     taskPipeline: taskRun.pipelineStatus,
     workflowPipeline: workflowRun.pipelineStatus,
     hasPersistedDocuments: Boolean(existingSnapshot?.sourceDocuments.length),
@@ -407,8 +536,10 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   const auditEvents = buildAuditEvents(agentRuns, approvalRequests);
   const timeline = buildTimeline({
     sourceEvents,
+    sourceDocuments,
     meetingArtifacts,
     decisionRecords,
+    costReport: devopsRun.output.report,
     riskAlerts,
     approvalRequests,
     auditEvents,
@@ -473,10 +604,18 @@ function buildIntegrationStatuses(
   githubIntegration: IntegrationStatus
 ): IntegrationStatus[] {
   const baseIntegrations = cloneIntegrations(mockIntegrations).filter(
-    (integration) => integration.service !== "GitHub" && integration.service !== "Auth0"
+    (integration) =>
+      integration.service !== "GitHub" &&
+      integration.service !== "Auth0" &&
+      integration.service !== "Notion"
   );
 
-  return [getAuth0IntegrationStatus(), githubIntegration, ...baseIntegrations];
+  return [
+    getAuth0IntegrationStatus(),
+    githubIntegration,
+    getNotionIntegrationStatus(),
+    ...baseIntegrations,
+  ];
 }
 
 function cloneSourceDocuments(documents: SourceDocument[]): SourceDocument[] {
@@ -509,19 +648,11 @@ async function executeEngineerAgent(
   });
 }
 
-function executeDocsAgent(
+async function executeDocsAgent(
   sourceDocument: SourceDocument,
   engineeringSummary: EngineeringSummary
-): LocalExecution<DocsAgentOutput> {
-  return {
-    agentId: "docs",
-    output: docsAgent({ sourceDocument, engineeringSummary }),
-    executionTimeMs: 64,
-    timestamp: sourceDocument.createdAt,
-    provider: "local",
-    fallbackReason:
-      "Docs processing still uses local typed logic until the runtime-backed docs path is enabled.",
-  };
+): Promise<DocsPipelineExecution> {
+  return runDocsPipeline({ sourceDocument, engineeringSummary });
 }
 
 async function executeTaskAgent(
@@ -576,6 +707,7 @@ function buildPipelineStatuses(input: {
   refreshedAt: string;
   githubIntegration: IntegrationStatus;
   engineerPipeline: WorkspacePipelineStatus;
+  docsRuns: DocsPipelineExecution[];
   taskPipeline: WorkspacePipelineStatus;
   workflowPipeline: WorkspacePipelineStatus;
   hasPersistedDocuments: boolean;
@@ -600,18 +732,13 @@ function buildPipelineStatuses(input: {
   return [
     githubPipeline,
     input.engineerPipeline,
+    buildDocsProcessingPipelineStatus(
+      input.docsRuns,
+      input.hasPersistedDocuments,
+      input.refreshedAt
+    ),
     input.taskPipeline,
     input.workflowPipeline,
-    {
-      id: "docs-processing",
-      label: "Docs processing",
-      provider: "local",
-      health: input.hasPersistedDocuments ? "ready" : "fallback",
-      message: input.hasPersistedDocuments
-        ? "Docs processing is using persisted source documents."
-        : "Docs processing is using bundled fallback documents until real source documents are added.",
-      updatedAt: input.refreshedAt,
-    },
     {
       id: "devops-signals",
       label: "DevOps signals",
@@ -623,6 +750,64 @@ function buildPipelineStatuses(input: {
       updatedAt: input.refreshedAt,
     },
   ];
+}
+
+function buildDocsProcessingPipelineStatus(
+  runs: DocsPipelineExecution[],
+  hasPersistedDocuments: boolean,
+  refreshedAt: string
+): WorkspacePipelineStatus {
+  const latestTimestamp =
+    runs
+      .map((run) => run.timestamp)
+      .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0] ??
+    refreshedAt;
+  const allRuntime = runs.length > 0 && runs.every((run) => run.provider === "runtime");
+  const hadFallback = runs.some((run) => Boolean(run.fallbackReason));
+
+  if (!hasPersistedDocuments) {
+    return {
+      id: "docs-processing",
+      label: "Docs processing",
+      provider: allRuntime ? "runtime" : "local",
+      health: "fallback",
+      message: allRuntime
+        ? "Docs processing ran through the runtime, but it is still using bundled fallback meeting documents until real records are persisted."
+        : "Docs processing is using bundled fallback meeting documents until real records are persisted.",
+      updatedAt: latestTimestamp,
+    };
+  }
+
+  if (hadFallback) {
+    return {
+      id: "docs-processing",
+      label: "Docs processing",
+      provider: "local",
+      health: "fallback",
+      message: `Docs processing fell back to the local typed pipeline for at least one source document. ${runs.find((run) => run.fallbackReason)?.fallbackReason ?? ""}`.trim(),
+      updatedAt: latestTimestamp,
+    };
+  }
+
+  if (allRuntime) {
+    return {
+      id: "docs-processing",
+      label: "Docs processing",
+      provider: "runtime",
+      health: "ready",
+      message: "Docs processing ran through the live runtime using persisted source documents.",
+      updatedAt: latestTimestamp,
+    };
+  }
+
+  return {
+    id: "docs-processing",
+    label: "Docs processing",
+    provider: "local",
+    health: "ready",
+    message: "Docs processing is using persisted source documents through the local typed pipeline.",
+    updatedAt: latestTimestamp,
+  };
 }
 
 function buildEngineeringRiskAlerts(summary: EngineeringSummary): RiskAlert[] {
@@ -707,13 +892,13 @@ function buildProposedActions(
       id: "proposed-action-003",
       workspaceId: WORKSPACE_ID,
       actionKind: "docs.update",
-      title: "Update architecture docs with new security model",
+      title: `Update docs after decision: ${documentationDecision.title}`,
       description:
-        "Docs should be refreshed so the delegated access model stays aligned with the latest product decisions.",
+        "Docs should be refreshed so the latest accepted meeting decision is reflected in Authrix's operational records.",
       targetSystem: "Documentation",
       riskLevel: "low",
       sourceAgentId: "docs",
-      status: "approved",
+      status: "proposed",
       createdAt: meetingArtifact?.generatedAt ?? documentationDecision.createdAt,
       relatedRecordIds: [
         documentationDecision.id,
@@ -782,7 +967,7 @@ function linkDecisionsToTasks(
 
 function buildAgentRuns(
   engineerRun: Awaited<ReturnType<typeof runEngineerPipeline>>,
-  docsRuns: LocalExecution<DocsAgentOutput>[],
+  docsRuns: DocsPipelineExecution[],
   taskRun: Awaited<ReturnType<typeof runTaskPipeline>>,
   workflowRun: Awaited<ReturnType<typeof runWorkflowPipeline>>,
   devopsRun: LocalExecution<{ report: CostReport }>
@@ -810,13 +995,14 @@ function buildAgentRuns(
     ...docsRuns.map((run, index) => ({
       id: `agent-run-docs-00${index + 1}`,
       workspaceId: WORKSPACE_ID,
-      agentId: run.agentId,
+      agentId: "docs",
       status: "completed" as const,
       startedAt: run.timestamp,
       completedAt: run.timestamp,
       inputSummary: `Processed meeting document ${run.output.artifact.sourceDocumentId}.`,
       outputSummary: `Created ${run.output.decisions.length} decisions and ${run.output.artifact.actionItems.length} action items.`,
       provider: run.provider,
+      runtimeSessionId: run.sessionId,
       fallbackReason: run.fallbackReason,
       relatedRecordIds: [
         run.output.artifact.id,
@@ -917,13 +1103,28 @@ function buildAuditEvents(
 
 function buildTimeline(input: {
   sourceEvents: SourceEvent[];
+  sourceDocuments: SourceDocument[];
   meetingArtifacts: MeetingArtifact[];
   decisionRecords: DecisionRecord[];
+  costReport: CostReport;
   riskAlerts: RiskAlert[];
   approvalRequests: ApprovalRequest[];
   auditEvents: AuditEvent[];
 }): TimelineEntry[] {
   const entries: TimelineEntry[] = [
+    ...input.sourceDocuments.map((document) => ({
+      id: `timeline-${document.id}`,
+      type: "source_document",
+      title: document.title,
+      description: `A ${document.documentType} from ${document.sourceSystem} was added to the workspace.`,
+      source: document.sourceSystem,
+      timestamp: document.createdAt,
+      metadata: {
+        documentType: document.documentType,
+        participants: document.participants.join(", "),
+      },
+      relatedRecordIds: [document.id],
+    })),
     ...input.sourceEvents.map((event) => ({
       id: `timeline-${event.id}`,
       type: event.eventType,
@@ -961,6 +1162,20 @@ function buildTimeline(input: {
       },
       relatedRecordIds: [decision.id, ...decision.relatedTaskIds],
     })),
+    {
+      id: `timeline-${input.costReport.id}`,
+      type: "cost_report",
+      title: "Cost report refreshed",
+      description: input.costReport.summary,
+      source: "devops",
+      timestamp: input.costReport.generatedAt,
+      metadata: {
+        riskLevel: input.costReport.riskLevel,
+        totalSpend: input.costReport.totalSpend,
+        currency: input.costReport.currency,
+      },
+      relatedRecordIds: [input.costReport.id],
+    },
     ...input.riskAlerts.map((alert) => ({
       id: `timeline-${alert.id}`,
       type: "risk_alert",
@@ -1014,6 +1229,34 @@ function cloneCostReport(report: CostReport): CostReport {
   };
 }
 
+function mergePersistedTasks(
+  nextTasks: SuggestedTask[],
+  existingTasks: SuggestedTask[]
+): SuggestedTask[] {
+  const existingById = new Map(existingTasks.map((task) => [task.id, task]));
+  const mergedTasks = nextTasks.map((task) => {
+    const existing = existingById.get(task.id);
+    if (!existing) {
+      return task;
+    }
+
+    return {
+      ...task,
+      createdAt: existing.createdAt,
+      status: existing.status,
+      suggestedOwner: existing.suggestedOwner ?? task.suggestedOwner,
+      dueDate: existing.dueDate ?? task.dueDate,
+    };
+  });
+
+  const mergedIds = new Set(mergedTasks.map((task) => task.id));
+  const carriedTasks = existingTasks.filter(
+    (task) => !mergedIds.has(task.id) && task.status !== "rejected"
+  );
+
+  return [...mergedTasks, ...carriedTasks];
+}
+
 function sortTasks(tasks: SuggestedTask[]): SuggestedTask[] {
   const priorityOrder: Record<SuggestedTask["priority"], number> = {
     critical: 0,
@@ -1022,7 +1265,19 @@ function sortTasks(tasks: SuggestedTask[]): SuggestedTask[] {
     low: 3,
   };
 
+  const statusOrder: Record<SuggestedTask["status"], number> = {
+    suggested: 0,
+    approved: 1,
+    completed: 2,
+    rejected: 3,
+  };
+
   return [...tasks].sort((left, right) => {
+    const statusDelta = statusOrder[left.status] - statusOrder[right.status];
+    if (statusDelta !== 0) {
+      return statusDelta;
+    }
+
     const priorityDelta = priorityOrder[left.priority] - priorityOrder[right.priority];
     if (priorityDelta !== 0) {
       return priorityDelta;

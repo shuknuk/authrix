@@ -56,19 +56,22 @@ If no live GitHub configuration is present, Authrix stays in mock mode and label
 
 ## Runtime Foundation
 
-Authrix keeps the product layer separate from the autonomous runtime. By default, the app uses the local mock runtime bridge so the dashboard stays deterministic and demo-safe.
+Authrix owns the product and runtime identity.
 
-To point Authrix at a live OpenClaw gateway:
+The runtime layer in this repo is being built by adapting proven OpenClaw infrastructure under the MIT license. That lineage should be credited in repository materials, but it is not a product-facing dependency. Authrix is the product.
 
-1. Run a separate OpenClaw gateway process outside this app.
-2. Set `AUTHRIX_RUNTIME=openclaw`.
-3. Configure `OPENCLAW_GATEWAY_URL`.
-4. Add `OPENCLAW_GATEWAY_TOKEN` or `OPENCLAW_GATEWAY_PASSWORD` if your gateway requires credentials.
-5. Optional: set `OPENCLAW_AGENT_ID` if you want all Authrix runtime calls to target one configured runtime agent.
+By default, the app uses the local mock runtime path so the dashboard stays deterministic when live runtime behavior is unavailable. For runtime-backed execution during development:
 
-The Connections page now shows whether Authrix is on the mock bridge, connected to a live runtime, or disconnected from the configured gateway.
+1. Set `AUTHRIX_RUNTIME=openclaw`.
+2. Configure `OPENCLAW_GATEWAY_URL`.
+3. Add `OPENCLAW_GATEWAY_TOKEN` or `OPENCLAW_GATEWAY_PASSWORD` if your runtime transport requires credentials.
+4. Optional: set `OPENCLAW_AGENT_ID` if you want all Authrix runtime calls to target one configured runtime worker.
 
-Important note: the runtime adapter is now real, but the product is still mock-first. The adapter can execute runtime-backed agent calls when your OpenClaw agent is configured to return JSON-only outputs. Until those runtime prompts are tuned, the default `mock` provider remains the safest path for normal dashboard work.
+Engineering note: some internal runtime modules still use gateway-shaped transport and configuration naming while the reused runtime foundation is being folded more deeply into Authrix. That is an implementation detail, not the product architecture.
+
+The Connections page shows whether Authrix is using local mock execution, a live runtime-backed path, or a disconnected runtime configuration.
+
+Important note: Authrix now has real persisted product infrastructure, a live GitHub path, approval-backed writes, and runtime-backed execution for selected pipelines. Some flows still fall back honestly to deterministic local execution when runtime output is unavailable or not yet tuned for structured results.
 
 ## Persistent Product State
 
@@ -95,10 +98,21 @@ The weekly engineering summary can now run in three modes:
 The Connections page and Dashboard now show pipeline health so you can see whether engineering intelligence came from a runtime-backed path or a fallback path.
 
 The same execution modes exist for:
+- `AUTHRIX_DOCS_EXECUTION`
 - `AUTHRIX_TASK_EXECUTION`
 - `AUTHRIX_WORKFLOW_EXECUTION`
 
 These default to `auto`.
+
+Meeting intake is now a first-class persisted path:
+- `POST /api/source-documents` accepts manual notes or transcript-style payloads
+- `GET /api/meeting-artifacts` returns structured meeting outputs
+- `GET /api/decision-records` returns durable decision records
+- `GET/PATCH /api/tasks` returns or updates persisted task follow-through state
+
+Optional documentation sink beyond GitHub:
+- Set `NOTION_API_TOKEN` and `NOTION_PARENT_PAGE_ID` to let approved `docs.update` actions publish into Notion through the backend adapter
+- If Notion is not configured, approved docs updates are written to `.authrix-data/generated-docs/operational-updates.md`
 
 ## Manual Persisted Inputs
 

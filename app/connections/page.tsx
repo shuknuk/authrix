@@ -31,25 +31,25 @@ export default async function ConnectionsPage() {
 
       <CardShell
         title="Autonomous Runtime"
-        description="Authrix keeps the product layer separate from the runtime foundation so we can swap between local mock execution and a live always-on backend."
+        description="Authrix runs on an internal autonomous runtime engine. The product layer stays cleanly separated so runtime internals remain an implementation detail."
       >
         <div className="flex items-start justify-between gap-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-zinc-200">Runtime adapter</p>
+              <p className="text-sm font-medium text-zinc-200">Runtime engine</p>
               <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                {runtimeStatus.provider}
+                {formatRuntimeProvider(runtimeStatus.provider)}
               </span>
             </div>
             <p className="mt-1 text-xs text-zinc-500">{runtimeStatus.description}</p>
             {runtimeStatus.url ? (
               <p className="mt-2 text-[11px] text-zinc-600">
-                Gateway URL: {runtimeStatus.url}
+                Runtime endpoint: {runtimeStatus.url}
               </p>
             ) : null}
             {runtimeStatus.agentId ? (
               <p className="mt-2 text-[11px] text-zinc-600">
-                Default runtime agent: {runtimeStatus.agentId}
+                Default runtime worker: {runtimeStatus.agentId}
               </p>
             ) : null}
             {runtimeStatus.availableMethods && runtimeStatus.availableMethods.length > 0 ? (
@@ -99,7 +99,7 @@ export default async function ConnectionsPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-sm font-medium text-zinc-200">{pipeline.label}</p>
                   <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                    {pipeline.provider}
+                    {formatRuntimeProvider(pipeline.provider)}
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-zinc-500">{pipeline.message}</p>
@@ -219,4 +219,12 @@ function buildGitHubConnectHref(connectionName: string, scopes: string[]): strin
   scopes.forEach((scope) => params.append("scopes", scope));
 
   return `/auth/connect?${params.toString()}`;
+}
+
+function formatRuntimeProvider(provider: string): string {
+  if (provider === "openclaw") {
+    return "internal";
+  }
+
+  return provider;
 }

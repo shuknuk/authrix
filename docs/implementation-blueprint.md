@@ -2,81 +2,80 @@
 
 This document is the implementation-facing product blueprint for Authrix.
 
-It is written for the real product path, not a temporary demo path. Authrix can still use mocks and fixtures during development, but mocks are only acceptable as explicit fallback or developer tooling. They are not the target architecture.
+It reflects the real product path. Mock data and local fallbacks are allowed during development, but they are not the target architecture. Authrix is being built as a real startup operations product with its own runtime identity, backend rules, security model, and control tower.
 
 ## Product Definition
 
 Authrix is a secure autonomous operations platform for startup teams.
 
-Its purpose is to turn scattered activity across engineering work, meetings, documentation, ownership, and operational signals into structured, auditable action.
+Its job is to turn scattered activity across engineering, meetings, documentation, ownership, and operational signals into structured, auditable action.
 
 Authrix is not:
 - a generic chatbot
 - a one-off automation script
 - a fake multi-agent demo
 - a dashboard with AI pasted on top
-- a thin wrapper around an open-source runtime
+- a thin wrapper around somebody else's runtime
 
 Authrix is:
-- a startup operations product with its own product logic
-- a control tower for visibility, approvals, and auditability
-- a secure delegated-action layer over real third-party systems
-- a structured memory and accountability system
-- a product backed by an autonomous runtime foundation
+- a startup operations product with its own logic and control surface
+- a secure delegated-action system over real third-party tools
+- a shared memory and accountability layer for lean technical teams
+- a product backed by an internal autonomous runtime engine
 
 ## Runtime Foundation
 
-Authrix is built on top of OpenClaw, an open-source MIT-licensed autonomous runtime.
+Authrix has its own runtime layer inside the product architecture.
 
-That is a practical engineering decision. OpenClaw gives Authrix a foundation for persistent execution, agent sessions, background jobs, tool routing, and long-running autonomous behavior so Authrix can focus on its actual product value.
+That runtime layer is being built by reusing and adapting proven OpenClaw runtime infrastructure under the MIT license. That lineage should be credited in repository and legal materials, but it is not part of the product narrative or user-facing architecture. Users adopt Authrix, not "OpenClaw compatibility."
 
-### What the runtime provides
+The practical reason for this approach is straightforward: persistent execution, background jobs, session handling, and tool routing are hard infrastructure problems that do not need to be reinvented if trusted open-source runtime code already exists.
+
+### What the runtime layer provides
 
 - persistent execution
 - background processing
 - session lifecycle
 - message-driven agent runs
 - tool and provider routing
-- runtime-level job coordination
+- long-running autonomous behavior
 
 ### What Authrix provides
 
 - workspace and team state
 - normalized product records
-- specialized startup operations agents
+- startup-specific agents
 - integration adapters
 - approvals and policy enforcement
 - explainability and auditability
 - the control tower UI
-- product rules for ownership, decisions, and operational drift
+- product rules around ownership, decisions, drift, and operational risk
 
-### The boundary
+### The product boundary
 
-- if it is generic autonomous infrastructure, it belongs to the runtime
-- if it exists because Authrix is a startup operations product, it belongs to Authrix
+- if it is generic autonomous infrastructure, it belongs to the internal runtime layer
+- if it exists because the product is Authrix, it belongs to the Authrix product layer
 
-Authrix should never be tightly coupled to OpenClaw internals. It should talk to the runtime through a stable adapter boundary.
+Even though Authrix is reusing proven runtime code, product modules should still depend on a stable runtime boundary rather than reaching into runtime internals directly. That keeps the product readable and keeps the runtime lineage private.
 
 ## Real-Product Development Principles
 
-The project should now follow a real-product mindset:
+The project should follow a real-product mindset:
 
 - real identity before fake trust
 - real source systems before large fake datasets
-- real runtime boundaries before hand-wavy orchestration
-- real persistence before complicated product automation
+- real persistence before complicated automation
 - real approvals before real external writes
-- clear fallback modes instead of pretending a live path exists
+- real runtime behavior before claiming autonomy
+- explicit fallback modes instead of pretending a live path exists
 
 This changes how phases are evaluated:
 - a phase is not complete just because the UI exists
-- a phase is complete when the product surface is backed by real infrastructure or by an intentionally temporary fallback with a clear migration path
+- a phase is complete when the product surface is backed by real infrastructure or an honest fallback with a clear migration path
 
-## Runtime Bridge
+## Runtime Boundary
 
-Authrix communicates with the runtime through a typed runtime bridge. This is the most important architectural seam in the system.
-
-The bridge should cover:
+Authrix product code should talk to the runtime through a typed internal boundary.
 
 ```ts
 interface RuntimeBridge {
@@ -93,21 +92,22 @@ interface RuntimeBridge {
 
 Important rule:
 - Authrix product code should only know the bridge
-- OpenClaw-specific details should stay inside the OpenClaw adapter
+- runtime-lineage-specific details should stay inside the internal runtime layer
 
-The mock bridge may still exist for local development and failure fallback, but the target path is a live runtime adapter.
+Mock and deterministic local implementations can still exist for development and fallback, but the product target is a live Authrix-owned runtime engine.
 
 ## Product Layers
 
-Authrix is built as four clear layers.
+Authrix should be built as four clear layers.
 
-### 1. Runtime Foundation
+### 1. Internal Runtime Layer
 
-OpenClaw handles:
+The runtime layer handles:
 - long-running execution
 - background jobs
 - session lifecycle
 - tool routing
+- provider routing
 - autonomous runtime behavior
 
 ### 2. Product Backend
@@ -126,7 +126,7 @@ The Authrix backend is the application brain. It owns:
 
 ### 3. Security and Identity
 
-Auth0 and Token Vault are part of the real product architecture now, not a future add-on.
+Auth0 and Token Vault are part of the real product architecture.
 
 Security rules:
 - agents never hold raw credentials
@@ -137,7 +137,7 @@ Security rules:
 
 ### 4. Control Tower
 
-The frontend is not just a demo shell. It is the operating surface of the product.
+The frontend is the operating surface of the product.
 
 It should expose:
 - integration state
@@ -267,19 +267,19 @@ Authrix should never claim secure behavior that is not actually implemented.
 
 ## Development Priorities
 
-The product priorities are now:
+The product priorities are:
 
 1. real identity and secure connection boundaries
 2. canonical product records and backend services
 3. first live external source of truth
-4. live runtime adapter and runtime health visibility
+4. Authrix-owned runtime engine and runtime health visibility
 5. durable persistence and background execution
 6. mediated approval-backed writes
 7. UI polish on top of live behavior
 
 This means:
 - Auth0 is not deferred
-- the runtime adapter is not deferred
+- runtime internalization is not deferred
 - GitHub is not just a mock integration
 - persistence is required before calling the infrastructure layer complete
 
@@ -297,7 +297,7 @@ Authrix should keep a disciplined branching workflow.
 Feature branches should represent one coherent change. Examples:
 - `feat/auth0-integration`
 - `feat/github-live-ingestion`
-- `feat/runtime-adapter`
+- `feat/runtime-engine`
 - `feat/workspace-persistence`
 - `feat/approval-execution`
 - `feat/control-tower-runtime-status`
@@ -314,8 +314,6 @@ Recommended flow:
 
 ## Updated Implementation Phases
 
-The phases below replace the original mock-first interpretation.
-
 ### Phase 0: Product Alignment and Architecture Boundary
 
 Goal:
@@ -323,7 +321,7 @@ Goal:
 
 Deliverables:
 - canonical product vision
-- clear OpenClaw vs Authrix boundary
+- clear Authrix-owned runtime narrative
 - clear Auth0 and Token Vault role
 - branch strategy
 - canonical record model
@@ -362,7 +360,7 @@ Deliverables:
 - secure backend mediation boundaries
 - approval and proposed-action model
 - product-level agent contracts
-- runtime abstraction layer
+- runtime abstraction boundary
 - secure integration architecture that keeps credentials out of agents
 
 Definition of done:
@@ -395,17 +393,17 @@ Status:
 - complete in hybrid form
 
 Note:
-- hybrid means the live path exists, but parts of downstream product behavior still use local deterministic agent logic and seeded records
+- hybrid means the live path exists, but parts of downstream product behavior still use deterministic local logic or seeded records as fallback
 
-### Phase 4: Real Autonomous Product Infrastructure
+### Phase 4: Authrix Runtime Engine and Durable Product Infrastructure
 
 Goal:
-- make the backend and runtime layer real enough that the rest of the product can build on it without architectural rework
+- make the backend and runtime layer real enough that the rest of the product can build on them without architectural rework
 
 This is the infrastructure milestone that turns Authrix from a hybrid prototype into a real product foundation.
 
 Deliverables:
-- live OpenClaw runtime adapter through the runtime bridge
+- an internal Authrix runtime layer backed by reused OpenClaw-derived infrastructure
 - runtime provider selection and health/status visibility
 - runtime-backed session creation and session inspection
 - runtime-backed execution path for at least one real Authrix agent flow
@@ -425,8 +423,12 @@ Definition of done:
 - see approvals, tasks, and timeline entries built from persisted product state
 - continue operating without relying on seeded mock workspace state as the primary path
 
-This is the key Phase 4 principle:
-- at the end of Phase 4, Authrix should have real product infrastructure ready for deeper feature expansion
+Important clarification:
+- some internal runtime modules may still preserve gateway-shaped transport or configuration naming while the reused runtime foundation is being folded more deeply into Authrix
+- that is an implementation detail, not the product architecture
+
+Status:
+- complete
 
 ### Phase 5: Real Product Expansion
 
@@ -440,28 +442,18 @@ Deliverables:
 - richer approval execution
 - additional integrations beyond GitHub
 
-## What Changes Now
-
-The roadmap now assumes:
-- the real product path is the default path
-- mocks are only fallback tools
-- earlier phases are considered complete only in foundation terms
-- Phase 4 is where Authrix stops being mainly a well-structured prototype and becomes real product infrastructure
-
-That means the next implementation work inside Phase 4 should focus on:
-- persistent storage
-- runtime-backed execution for a real agent pipeline
-- live background sync/refresh
-- eliminating seeded workspace assembly as the default backend path
+Status:
+- complete
 
 ## Current Status
 
-Current status under the real-product interpretation:
+Current status under the corrected product interpretation:
 
 - Phase 0: complete
 - Phase 1: complete in foundation form
 - Phase 2: complete in foundation form
 - Phase 3: complete in hybrid form
 - Phase 4: complete
+- Phase 5: complete
 
-Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation that is ready for deeper product expansion.
+Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation that is ready for deeper product expansion, with the reused runtime lineage kept internal to the product rather than exposed as a separate dependency narrative.

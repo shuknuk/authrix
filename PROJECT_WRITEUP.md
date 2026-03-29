@@ -1,20 +1,22 @@
-# Authrix
+# Authrix Project Writeup
 
-Authrix is a secure autonomous operations layer for startup teams.
+## Overview
 
-It is designed for small technical teams that move quickly across product, engineering, meetings, documentation, infrastructure, and execution, but struggle to preserve continuity across all of that motion. Authrix exists to turn scattered activity into structured organizational action.
+Authrix is a secure autonomous operations platform for startup teams.
 
-This is not a generic chatbot, a narrow automation script, or a dashboard pretending to be an agent system. Authrix is a complete product — a unique operations platform with specialized agents, structured workflows, approval-gated actions, and a professional control tower — backed by a fully autonomous AI runtime.
+It is designed for small technical teams that move fast across engineering, meetings, documentation, infrastructure, and decision-making, but struggle to preserve continuity across all of that motion. Authrix exists to turn scattered activity into structured organizational action.
+
+This is not a generic chatbot, a narrow automation script, or a dashboard pretending to be an agent system. Authrix is a real product with its own runtime layer, product backend, approvals, auditability, and control tower.
 
 ## One-Line Pitch
 
 Authrix is a secure autonomous operations platform that turns engineering activity, meetings, documentation, workflow signals, and operational data into structured, auditable action for startup teams.
 
-## Overview
+## Core Thesis
 
-Most startup teams already have tools for communication, engineering, storage, and deployment. The problem is not lack of tools. The problem is lack of continuity.
+Startups already generate the right information. They just do a poor job turning it into reliable operational action.
 
-Important context gets created every day:
+Important context is constantly created:
 - code gets merged
 - meetings happen
 - decisions get made
@@ -23,26 +25,15 @@ Important context gets created every day:
 - costs move
 - documentation drifts
 
-But those signals rarely become shared organizational memory or reliable follow-through. The result is a familiar startup pattern:
+But those signals rarely become shared memory, follow-through, or accountability. The result is familiar:
 - people re-ask questions the team already answered
-- nobody can quickly summarize what changed this week
-- action items remain implied instead of assigned
-- docs become stale
+- nobody can summarize what changed this week
+- action items remain implied instead of owned
+- docs go stale
 - operational risk rises quietly
-- founders manually stitch together information from too many places
+- founders manually stitch together information from too many systems
 
-Authrix solves that. It acts as the connective intelligence layer above the team's existing systems and turns raw activity into summaries, decisions, tasks, approvals, alerts, and durable records.
-
-## Core Thesis
-
-Startups already generate the right information. They just do a poor job turning it into reliable operational action.
-
-Authrix fixes that by doing three things well:
-- observing relevant activity across the workspace
-- extracting the signals that matter
-- turning those signals into structured, reviewable outputs
-
-The goal is not to automate everything blindly. The goal is to create a product that helps small teams stay aligned, accountable, and operationally aware without losing control.
+Authrix exists to fix that.
 
 ## Product Positioning
 
@@ -52,16 +43,16 @@ Authrix is not:
 - a note-taking app with AI attached
 - an email bot
 - a static dashboard
-- fake "agent complexity" designed for show
-- a thin wrapper around an existing runtime
+- fake agent complexity built for show
+- a branded wrapper around another product
 
 Authrix is:
-- a startup operations system with a unique product vision
+- a startup operations system with its own product identity
 - a multi-agent product with specialized roles
 - a live control tower with approvals and auditability
 - a secure delegated-action layer over real tools
 - a shared memory and accountability system for a startup team
-- a complete platform that happens to use open-source infrastructure to power its runtime
+- a complete platform backed by an internal autonomous runtime engine
 
 ## Main Use Cases
 
@@ -74,7 +65,7 @@ Authrix should be able to help answer questions like:
 - "Why did our costs spike this week?"
 - "Update the docs from today's sync."
 
-These are not random prompts. They are operational questions that show up repeatedly in real teams.
+These are operational questions that repeat constantly inside startup teams.
 
 ## Product Architecture
 
@@ -95,27 +86,25 @@ Inputs may include:
 - token usage and API billing data
 - infrastructure usage metrics
 
-Authrix is not only prompt-driven. It is also designed to react to uploaded files, system activity, and recurring operational signals.
+Authrix is not only prompt-driven. It is designed to react to files, events, and recurring operational signals.
 
 ### 2. Autonomous Runtime Layer
 
-Authrix uses an autonomous AI runtime to handle the infrastructure side of agent execution. The runtime is built upon OpenClaw, an open-source multi-channel AI gateway.
+Authrix includes its own autonomous runtime layer for the infrastructure side of agent execution.
 
-Using an open-source runtime foundation is a practical engineering decision. It saves significant time on the generic infrastructure that every autonomous agent system needs — persistent execution, background jobs, session management, tool calling, provider routing — and lets the team focus entirely on what makes Authrix unique: the product layer.
+That runtime layer is being built by reusing and adapting proven OpenClaw runtime infrastructure under the MIT license. That open-source lineage should be credited in repository and legal materials, but it is not part of the product narrative. Authrix is the product. The runtime implementation is an internal engineering decision.
 
-The runtime provides:
+The runtime layer handles:
 - persistent execution
-- background job handling
-- message-driven sessions
-- multi-step task handling
-- tool use and provider routing
-- runtime-level autonomy
-
-Authrix does not modify or dumb down the runtime. It optimizes and configures it for startup operations use cases, and builds the entire product experience on top of it.
+- background jobs
+- session management
+- tool routing
+- provider routing
+- long-running autonomous behavior
 
 The boundary is simple:
-- the runtime handles how agents execute
-- Authrix handles what agents do and why
+- the runtime layer handles how agents execute
+- Authrix handles what agents do, why they do it, and how outputs become trusted product behavior
 
 ### 3. Product Backend Layer
 
@@ -166,15 +155,15 @@ This is where users should be able to see:
 - system timeline entries
 - overall workspace operational state
 
-The product should balance two modes:
+The product balances two modes:
 - natural interaction through prompts and requests
 - clear oversight through the control tower
 
 The system should feel autonomous, but never invisible.
 
-## What Authrix Owns vs What the Runtime Owns
+## What Authrix Owns
 
-The runtime handles generic autonomous infrastructure:
+The internal runtime layer handles generic autonomous infrastructure:
 - long-running execution
 - session lifecycle
 - background processing
@@ -182,7 +171,7 @@ The runtime handles generic autonomous infrastructure:
 - provider routing and model access
 - generic agent loop mechanics
 
-Authrix owns everything that makes this product unique:
+Authrix owns everything that makes the product unique:
 - the startup operations product layer
 - workspace context and structured records
 - specialized agent logic
@@ -194,22 +183,8 @@ Authrix owns everything that makes this product unique:
 - product-specific rules about risk, ownership, and organizational memory
 
 Simple rule:
-- if a capability would exist in any autonomous system, it belongs to the runtime
+- if a capability would exist in any autonomous system, it belongs to the internal runtime layer
 - if it exists because the product is Authrix, it belongs to Authrix
-
-## Runtime Bridge
-
-Authrix communicates with the runtime through a defined bridge interface. This interface abstracts the runtime's capabilities into a clean contract that Authrix's product backend can call.
-
-The bridge provides:
-- agent execution (run a task with tools and get structured output)
-- session management (create, list, read history)
-- tool invocation (execute a specific tool with arguments)
-- background job submission
-
-For the MVP, the bridge is implemented with mock/local functions. When the runtime integration is ready, the mock implementation is swapped for real runtime calls without changing any product code.
-
-This pattern keeps Authrix independent of any specific runtime version or API shape, and makes it possible to develop the full product experience before the runtime is wired.
 
 ## Agent System
 
@@ -409,9 +384,7 @@ The cleaner design is:
 
 Speech-to-text is a tooling pipeline, not an agent identity.
 
-## Technical Architecture
-
-The technical architecture should stay simple, typed, and reviewable.
+## Technical Stack
 
 ### Frontend
 
@@ -420,9 +393,7 @@ The technical architecture should stay simple, typed, and reviewable.
 - Tailwind CSS
 - shadcn/ui where helpful
 
-The frontend should focus on clarity, professionalism, and trust. The control tower should feel modern and intentional, not overloaded.
-
-UI refinement is not the initial priority. The backend, agents, and runtime bridge come first. The control tower UI will be built to a functional level early and polished later.
+The frontend should feel professional, trustworthy, and operationally clear.
 
 ### Backend
 
@@ -432,42 +403,39 @@ UI refinement is not the initial priority. The backend, agents, and runtime brid
 - approval and audit handling
 - integration adapters
 - data normalization pipelines
-- runtime bridge interface
-
-The backend is the primary development focus for the MVP.
+- runtime boundary interface
 
 ### Runtime
 
-- Built upon OpenClaw (open-source, MIT licensed)
-- Configured and optimized for Authrix's startup operations use cases
-- Accessed through the runtime bridge interface
-- Mocked during early development, wired to real runtime later
+- Authrix-owned autonomous runtime layer
+- built by adapting proven OpenClaw infrastructure under MIT
+- kept behind Authrix product boundaries
+- treated as an internal implementation detail rather than a user-facing dependency
 
-### Database
+### Database and Persistence
 
-- Supabase or Postgres
+- filesystem-backed persistence today
+- Supabase or Postgres as the product matures
 
-The database should hold the product's structured state, not just raw blobs.
+The durable store should hold the product's structured state, not just raw blobs.
 
 ### Security and Identity
 
-- Auth0 for AI Agents (deferred to after core backend is functional)
+- Auth0 for AI Agents
 - Token Vault for delegated third-party access
-- Mocked auth during early development
+- approval-gated backend-mediated writes
 
 ## Technical Principles
 
 Authrix should follow these technical principles:
 - agents accept typed normalized input
 - agents return structured typed output
-- agent logic should stay small and testable
-- avoid unnecessary orchestration frameworks
-- route external actions through controlled backend adapters
-- keep reads and writes clearly separated
-- prefer output-based chaining over shared raw context
-- preserve auditability everywhere it matters
-- backend first, UI refinement later
-- mock first, replace with real integrations incrementally
+- agent logic stays small and testable
+- external actions route through controlled backend adapters
+- reads and writes stay clearly separated
+- output-based chaining is preferred over shared raw context
+- auditability is preserved everywhere it matters
+- the product layer stays readable even when runtime internals evolve
 
 ## UX Philosophy
 
@@ -475,7 +443,7 @@ Authrix should feel:
 - autonomous, but not hidden
 - intelligent, but not vague
 - powerful, but not risky
-- polished, but not overbuilt
+- polished, but not bloated
 
 The interface should help users answer:
 - what happened
@@ -498,23 +466,11 @@ Core workflow:
 
 Branching is not about rigid ownership between collaborators. It is about keeping changes isolated, understandable, and safe.
 
-## Why This Product Matters
+## Open-Source Lineage
 
-Most tools solve one narrow slice of startup work:
-- code
-- docs
-- tickets
-- meetings
-- infra monitoring
+Authrix is a separate product.
 
-Authrix is interesting because it tries to connect those slices into one operational layer with shared context, approvals, accountability, and memory.
-
-That is the real value:
-- less context loss
-- better follow-through
-- better visibility
-- better trust around autonomous action
-- more leverage for small teams
+Its runtime layer is being accelerated by adapting proven OpenClaw infrastructure under the MIT license. That credit should be preserved in repository and legal materials. Product-facing materials, however, should describe the system as Authrix: a secure autonomous operations platform for startup teams.
 
 ## Vision
 

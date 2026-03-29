@@ -68,8 +68,7 @@ export function createOpenClawBridge(): RuntimeBridge {
           mode: "live",
           configured: true,
           healthy: true,
-          description:
-            "Authrix is connected to a live autonomous runtime gateway.",
+          description: "Authrix is connected to its live autonomous runtime engine.",
           checkedAt: new Date().toISOString(),
           url: config.url,
           agentId: config.defaultAgentId,
@@ -131,7 +130,7 @@ export function createOpenClawBridge(): RuntimeBridge {
 
       if (!key || !sessionId) {
         throw new Error(
-          "OpenClaw did not return a usable session key or session identifier."
+          "The runtime engine did not return a usable session key or session identifier."
         );
       }
 
@@ -178,7 +177,7 @@ export function createOpenClawBridge(): RuntimeBridge {
       return {
         success: false,
         output: null,
-        error: `OpenClaw tool invocation is not mapped yet for "${request.tool}".`,
+        error: `Runtime tool invocation is not mapped yet for "${request.tool}".`,
       };
     },
 
@@ -193,7 +192,7 @@ export function createOpenClawBridge(): RuntimeBridge {
         state: "failed",
         createdAt: new Date().toISOString(),
         completedAt: new Date().toISOString(),
-        error: `OpenClaw job submission is not mapped yet for "${request.type}".`,
+        error: `Runtime job submission is not mapped yet for "${request.type}".`,
       });
       return jobId;
     },
@@ -220,7 +219,7 @@ function buildDisconnectedStatus(
   error: unknown
 ): RuntimeStatus {
   const message =
-    error instanceof Error ? error.message : "Could not reach the configured runtime gateway.";
+    error instanceof Error ? error.message : "Could not reach the configured Authrix runtime endpoint.";
 
   return {
     provider: "openclaw",
@@ -291,7 +290,7 @@ function parseAgentOutput<TOutput>(
 
   if (!text) {
     throw new Error(
-      `OpenClaw returned no text payload for the Authrix "${agentId}" agent.`
+      `The runtime engine returned no text payload for the Authrix "${agentId}" agent.`
     );
   }
 
@@ -317,7 +316,7 @@ function parseAgentOutput<TOutput>(
   }
 
   throw new Error(
-    `OpenClaw did not return valid JSON for the Authrix "${agentId}" agent. Configure the runtime agent to emit JSON-only responses.`
+    `The runtime engine did not return valid JSON for the Authrix "${agentId}" agent. Configure the runtime worker to emit JSON-only responses.`
   );
 }
 

@@ -7,7 +7,7 @@ import {
   recordApprovalExecutionResult,
   updateApprovalRequest,
 } from "@/lib/data/workspace";
-import { executeGitHubApprovalAction } from "@/lib/github/write";
+import { executeApprovalAction } from "@/lib/actions/execute-approval";
 
 export async function GET() {
   if (isAuthConfigured) {
@@ -43,7 +43,7 @@ export async function PATCH(request: NextRequest) {
   if (status === "approved") {
     const latestApproval = await getApprovalRequestById(id);
     if (latestApproval) {
-      const execution = await executeGitHubApprovalAction(latestApproval);
+      const execution = await executeApprovalAction(latestApproval);
       const finalizedApproval = await recordApprovalExecutionResult(id, execution);
       return NextResponse.json(finalizedApproval ?? approval);
     }
