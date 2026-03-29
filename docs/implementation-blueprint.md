@@ -1,8 +1,8 @@
 # Authrix Implementation Blueprint
 
-This document is the implementation-facing product writeup for Authrix.
+This document is the implementation-facing product blueprint for Authrix.
 
-It exists to keep the project grounded as a real startup product, not just a short-term demo. The hackathon can act as a deadline, but the architecture, workflows, and code organization should support a product that can continue growing after the first release.
+It is written for the real product path, not a temporary demo path. Authrix can still use mocks and fixtures during development, but mocks are only acceptable as explicit fallback or developer tooling. They are not the target architecture.
 
 ## Product Definition
 
@@ -13,84 +13,89 @@ Its purpose is to turn scattered activity across engineering work, meetings, doc
 Authrix is not:
 - a generic chatbot
 - a one-off automation script
-- a static dashboard
-- a fake multi-agent demo with weak product boundaries
-- a thin wrapper around an existing open-source project
+- a fake multi-agent demo
+- a dashboard with AI pasted on top
+- a thin wrapper around an open-source runtime
 
 Authrix is:
-- a startup operations product with a unique vision
-- a multi-agent system with clear responsibilities
+- a startup operations product with its own product logic
 - a control tower for visibility, approvals, and auditability
-- a secure product layer backed by a fully autonomous AI runtime
+- a secure delegated-action layer over real third-party systems
+- a structured memory and accountability system
+- a product backed by an autonomous runtime foundation
 
 ## Runtime Foundation
 
-Authrix is built upon OpenClaw, an open-source (MIT licensed) multi-channel AI gateway.
+Authrix is built on top of OpenClaw, an open-source MIT-licensed autonomous runtime.
 
-OpenClaw provides the generic autonomous runtime infrastructure that every agent system needs. Using it is a practical engineering decision — it saves significant development time on runtime plumbing and lets the team focus entirely on what makes Authrix unique.
+That is a practical engineering decision. OpenClaw gives Authrix a foundation for persistent execution, agent sessions, background jobs, tool routing, and long-running autonomous behavior so Authrix can focus on its actual product value.
 
 ### What the runtime provides
 
-- persistent agent execution
-- background job handling
-- session and conversation lifecycle
-- tool calling and provider routing
-- multi-step task handling
+- persistent execution
+- background processing
+- session lifecycle
+- message-driven agent runs
+- tool and provider routing
+- runtime-level job coordination
 
-### What Authrix builds on top
+### What Authrix provides
 
-- the startup operations product layer
-- workspace context and structured records
-- specialized agent logic (engineering, workflow, devops, docs)
-- request routing and product-level coordination
-- the approval engine
+- workspace and team state
+- normalized product records
+- specialized startup operations agents
+- integration adapters
+- approvals and policy enforcement
 - explainability and auditability
 - the control tower UI
-- secure integration adapters
-- product-specific rules about risk, ownership, and organizational memory
+- product rules for ownership, decisions, and operational drift
 
 ### The boundary
 
 - if it is generic autonomous infrastructure, it belongs to the runtime
 - if it exists because Authrix is a startup operations product, it belongs to Authrix
 
-Authrix does not modify or simplify the runtime. It configures and optimizes it for startup operations, and builds the entire product experience on top.
+Authrix should never be tightly coupled to OpenClaw internals. It should talk to the runtime through a stable adapter boundary.
+
+## Real-Product Development Principles
+
+The project should now follow a real-product mindset:
+
+- real identity before fake trust
+- real source systems before large fake datasets
+- real runtime boundaries before hand-wavy orchestration
+- real persistence before complicated product automation
+- real approvals before real external writes
+- clear fallback modes instead of pretending a live path exists
+
+This changes how phases are evaluated:
+- a phase is not complete just because the UI exists
+- a phase is complete when the product surface is backed by real infrastructure or by an intentionally temporary fallback with a clear migration path
 
 ## Runtime Bridge
 
-Authrix communicates with the runtime through a defined bridge interface. This is the key architectural seam in the entire system.
+Authrix communicates with the runtime through a typed runtime bridge. This is the most important architectural seam in the system.
 
-The bridge abstracts the runtime's capabilities into a clean typed contract:
+The bridge should cover:
 
 ```ts
 interface RuntimeBridge {
+  getStatus(): Promise<RuntimeStatus>
   executeAgent(input: AgentExecutionRequest): Promise<AgentExecutionResult>
   createSession(config: SessionConfig): Promise<Session>
-  invokeTool(tool: string, args: Record<string, unknown>): Promise<ToolResult>
-  submitBackgroundJob(job: BackgroundJobRequest): Promise<JobHandle>
+  getSession(sessionId: string): Promise<Session | null>
+  listSessions(): Promise<Session[]>
+  invokeTool(request: ToolInvocation): Promise<ToolResult>
+  submitJob(request: BackgroundJobRequest): Promise<string>
+  getJobStatus(jobId: string): Promise<JobStatus>
 }
 ```
 
-For the MVP, the bridge is implemented with mock/local functions. When the real runtime is wired, the mock is swapped without changing any product code.
+Important rule:
+- Authrix product code should only know the bridge
+- OpenClaw-specific details should stay inside the OpenClaw adapter
 
-This pattern means:
-- Authrix can be developed and demoed fully before the runtime is connected
-- the product backend never calls runtime internals directly
-- runtime upgrades do not break product code
-- testing is straightforward with mock implementations
-
-## Development Priorities
-
-The order of priority for the MVP:
-
-1. **Backend and agents** — types, agent logic, runtime bridge, product backend routes
-2. **Runtime bridge mock** — local implementations that simulate runtime behavior
-3. **Functional UI** — enough control tower to demonstrate the product flow
-4. **Real integrations** — GitHub, then others
-5. **Auth and identity** — Auth0, Token Vault (deferred until core backend works)
-6. **UI refinement** — polish, animations, responsive design, edge states
-
-Backend first. UI refinement later. Mock first. Real integrations incrementally.
+The mock bridge may still exist for local development and failure fallback, but the target path is a live runtime adapter.
 
 ## Product Layers
 
@@ -98,70 +103,57 @@ Authrix is built as four clear layers.
 
 ### 1. Runtime Foundation
 
-The runtime layer provides:
-- persistent execution
-- background processing
-- tool and workflow execution
-- autonomous task handling
-- provider routing
-
-This layer is OpenClaw. Authrix configures it; it does not rebuild it.
+OpenClaw handles:
+- long-running execution
+- background jobs
+- session lifecycle
+- tool routing
+- autonomous runtime behavior
 
 ### 2. Product Backend
 
-This is the real application layer of Authrix and the primary development focus.
-
-It owns:
+The Authrix backend is the application brain. It owns:
 - workspace state
-- routing logic
-- normalized source ingestion
-- shared record storage
+- normalized records
+- source ingestion
+- product routing
 - approval handling
 - audit history
-- job tracking
 - risk classification
-- integration adapters
 - agent output persistence
-- the runtime bridge interface
-
-This is where Authrix becomes a product.
+- integration adapters
+- control-tower-facing data services
 
 ### 3. Security and Identity
 
-Auth0 Token Vault is the intended path for delegated third-party access.
+Auth0 and Token Vault are part of the real product architecture now, not a future add-on.
 
 Security rules:
 - agents never hold raw credentials
-- agents never directly manage OAuth tokens
-- all external actions pass through a mediated backend layer
-- approvals are enforced by product policy, not by UI copy alone
-- sensitive writes must be auditable
-
-Auth0 integration is deferred to after the core backend is functional. During early development, auth is mocked.
+- agents never directly own OAuth tokens
+- all third-party access flows through a mediated backend layer
+- all write actions are approval-aware
+- sensitive actions must be auditable
 
 ### 4. Control Tower
 
-The frontend acts as a live operational surface for the team.
+The frontend is not just a demo shell. It is the operating surface of the product.
 
-It should show:
-- active and recent jobs
+It should expose:
+- integration state
+- runtime state
+- source activity
 - agent outputs
-- decision logs
-- suggested follow-ups
-- pending approvals
-- operational alerts
-- system timeline entries
-- execution history and audit records
-
-The UI should make the system feel autonomous, but never invisible.
-
-The control tower will be built to a functional level during early phases and refined later. Backend is the priority.
+- approvals
+- tasks and ownership
+- costs and risk
+- timeline and audit history
 
 ## Agent Model
 
-Authrix uses specialized peer agents coordinated by backend and product logic.
+Authrix uses specialized peer agents coordinated by backend logic and shared product state.
 
-There should not be a fake "master agent" responsible for everything.
+There is no fake master agent.
 
 ### Engineering Agent
 
@@ -174,9 +166,9 @@ Inputs:
 
 Responsibilities:
 - summarize technical work
-- produce weekly engineering digests
-- flag notable architectural or risk changes
-- translate raw activity into readable operational intelligence
+- identify notable changes
+- flag technical risk
+- translate raw engineering activity into readable operational output
 
 ### Docs Agent
 
@@ -189,10 +181,10 @@ Inputs:
 - manual prompts
 
 Responsibilities:
-- create structured meeting notes
-- maintain decision logs
-- produce durable knowledge artifacts
-- capture what happened and what should be remembered
+- create meeting notes
+- record decisions
+- maintain durable knowledge artifacts
+- capture what happened and what should persist
 
 ### Workflow Agent
 
@@ -206,8 +198,8 @@ Inputs:
 Responsibilities:
 - identify next actions
 - suggest owners
+- detect accountability gaps
 - track unresolved work
-- surface accountability gaps
 
 ### DevOps Agent
 
@@ -216,232 +208,260 @@ Inputs:
 - token usage
 - infrastructure usage
 - deployment context
-- other cost-related product signals
+- other cost signals
 
 Responsibilities:
 - summarize spend and operational health
-- detect abnormal usage patterns
-- correlate changes with engineering activity
-- surface risk and drift
+- detect anomalies
+- correlate operational drift with product activity
+- surface risk
 
 ## Shared Product Records
 
-Authrix should rely on shared structured records rather than loose text blobs.
+Authrix should rely on structured records, not loose text blobs.
 
-Core records should include:
-- source events
-- normalized engineering activity
-- meeting artifacts
-- summaries
-- decision logs
-- workflow tasks
-- approval requests
-- cost and risk anomalies
-- audit events
-- agent run results
+The canonical records should include:
+- `Workspace`
+- `IntegrationStatus`
+- `SourceEvent`
+- `SourceDocument`
+- `EngineeringActivity`
+- `EngineeringSummary`
+- `MeetingArtifact`
+- `DecisionRecord`
+- `SuggestedTask`
+- `CostReport`
+- `RiskAlert`
+- `ProposedAction`
+- `ApprovalRequest`
+- `AuditEvent`
+- `AgentRunRecord`
+- `TimelineEntry`
 
-This shared record model is one of the most important product decisions in the whole system. It is what makes the system feel coherent and explainable.
+Real-product rule:
+- if a page matters, it should read from shared product records
+- if an agent output matters, it should become a stored or persistence-ready record
+- if an action matters, it must be visible in approvals and audit history
 
 ## Approval and Action Model
 
 Read-only intelligence can run freely.
 
-Any external write should become a proposed action before execution.
+External writes must become proposed actions before execution.
 
 Each proposed action should carry:
-- a typed action kind
+- action kind
 - source context
-- affected system
-- risk classification
-- a user-facing explanation
-- approval status
-- execution result
+- target system
+- risk level
+- explanation
+- approval state
+- execution outcome
 
 Risk model:
-- low risk: read-only analysis and passive summaries
-- medium risk: shared updates that may need policy-based approval
-- high risk: sensitive writes and actions with meaningful workspace consequences
+- low risk: summaries, read-only analysis, passive detection
+- medium risk: shared updates, created tasks, draft changes
+- high risk: sensitive writes and actions with important workspace consequences
 
-The product should never pretend an action was safely executed if that behavior is not actually implemented.
+Authrix should never claim secure behavior that is not actually implemented.
 
-## Implementation Principles
+## Development Priorities
 
-Implementation should follow these principles:
-- keep domain types explicit
-- prefer simple functions over orchestration frameworks
-- use mock data first when a real integration is not yet stable
-- preserve clear boundaries between runtime, backend, agents, and UI
-- avoid unnecessary libraries
-- keep all important outputs structured
-- optimize for believable product leverage over feature count
-- backend first, UI refinement later
-- design the runtime bridge interface before implementing either side
+The product priorities are now:
+
+1. real identity and secure connection boundaries
+2. canonical product records and backend services
+3. first live external source of truth
+4. live runtime adapter and runtime health visibility
+5. durable persistence and background execution
+6. mediated approval-backed writes
+7. UI polish on top of live behavior
+
+This means:
+- Auth0 is not deferred
+- the runtime adapter is not deferred
+- GitHub is not just a mock integration
+- persistence is required before calling the infrastructure layer complete
 
 ## Branching and Collaboration Model
 
-Authrix should use a disciplined branching workflow.
+Authrix should keep a disciplined branching workflow.
 
 ### Main branches
 
-- `main`: stable, review-ready, releasable
+- `main`: stable and demo-safe
 - `dev`: shared integration branch
 
-### Feature branch rules
+### Feature branches
 
-All meaningful work should happen in feature branches created from `dev`.
-
-Recommended examples:
-- `feat/app-shell-dashboard`
-- `feat/runtime-bridge`
-- `feat/backend-agents`
-- `feat/github-ingestion`
-- `feat/approval-engine`
+Feature branches should represent one coherent change. Examples:
 - `feat/auth0-integration`
-- `feat/cost-risk-card`
-- `feat/control-tower-polish`
+- `feat/github-live-ingestion`
+- `feat/runtime-adapter`
+- `feat/workspace-persistence`
+- `feat/approval-execution`
+- `feat/control-tower-runtime-status`
 
 ### Workflow
 
 Recommended flow:
 1. update local `dev`
 2. create a focused feature branch
-3. make one coherent set of changes
-4. commit with a clear message
-5. open a PR into `dev`
-6. merge `dev` into `main` only when stable
+3. make one coherent change
+4. commit clearly
+5. merge into `dev`
+6. promote to `main` only when stable
 
-## Implementation Phases
+## Updated Implementation Phases
 
-### Phase 0: Foundation and Alignment (complete)
+The phases below replace the original mock-first interpretation.
 
-Goal:
-- align the repo with the current product vision before code spreads
-
-Deliverables:
-- implementation blueprint
-- clarified runtime/product boundary
-- clarified OpenClaw relationship and runtime bridge pattern
-- agreed branch strategy
-- decision on mock-first approach
-
-### Phase 1: Backend Foundation and Runtime Bridge
+### Phase 0: Product Alignment and Architecture Boundary
 
 Goal:
-- establish the typed backbone of the product
+- lock the real product thesis before code spreads
 
 Deliverables:
-- Next.js project scaffold (app shell, basic routing)
-- shared types for all domain records and agent inputs/outputs
-- runtime bridge interface definition
-- mock runtime bridge implementation
-- product backend route handlers (server actions or API routes)
-- agent function stubs with mock data
+- canonical product vision
+- clear OpenClaw vs Authrix boundary
+- clear Auth0 and Token Vault role
+- branch strategy
+- canonical record model
 
-This is the most important phase. Everything else builds on it.
+Status:
+- complete
 
-### Phase 2: Agent Logic and Mock Pipeline
+### Phase 1: Real Product Shell and Canonical State
 
 Goal:
-- make the agents real at the logic level, powered by mock data
+- build the actual product surface and shared backend contracts
 
 Deliverables:
-- pure-function implementations for Engineering, Workflow, and DevOps agents
-- mock GitHub activity data
-- mock cost/usage data
-- agent output-based chaining (engineering summary → task suggestions)
-- agent outputs persisted as structured records
-- backend routes that serve agent results
+- Next.js app shell and real page structure
+- typed domain records
+- typed agent contracts
+- shared workspace snapshot shape
+- control tower sections for summary, tasks, costs, approvals, activity, and connections
+- product routes that serve shared state instead of page-local mock logic
 
-### Phase 3: Functional Control Tower
+Definition of done:
+- all major pages render from shared product state
+- the system has one clear data model
+- the UI is a real product shell, not disconnected screens
+
+Status:
+- complete in foundation form
+
+### Phase 2: Security and Product Backend Foundation
 
 Goal:
-- build enough UI to demonstrate the full product flow
+- make Authrix a real secured application, not just a local prototype
 
 Deliverables:
-- dashboard page with summary, tasks, cost/risk, and approval cards
-- connections page (mock integration status)
-- activity page (event timeline)
-- tasks page (suggested and pending tasks)
-- costs page (spend and risk overview)
-- functional loading, empty, and error states
-- all cards wired to backend agent outputs
+- Auth0 login and protected routes
+- secure backend mediation boundaries
+- approval and proposed-action model
+- product-level agent contracts
+- runtime abstraction layer
+- secure integration architecture that keeps credentials out of agents
 
-This is a functional UI, not a polished one. Refinement comes later.
+Definition of done:
+- login is real
+- core routes are protected
+- actions and approvals are modeled as real backend concerns
+- the product has a believable trust model
 
-### Phase 4: Approval Engine
+Status:
+- complete in foundation form
+
+### Phase 3: First Live Source of Truth
 
 Goal:
-- establish a real trust model
+- replace the first mock path with a real external source
 
 Deliverables:
-- typed proposed-action model
-- approval queue in the backend
-- approval UI in the control tower
-- risk classification logic
-- mediated action execution flow
-- audit entries for action lifecycle
+- GitHub live ingestion
+- normalized engineering activity from a real repository
+- Auth0 connected-account path for GitHub
+- real integration status in the control tower
+- product data services that can prefer live data and fall back honestly
 
-### Phase 5: First Real Integration
+Definition of done:
+- Authrix can connect to GitHub
+- real engineering activity can enter the product
+- the system no longer depends entirely on seeded engineering data
+
+Status:
+- complete in hybrid form
+
+Note:
+- hybrid means the live path exists, but parts of downstream product behavior still use local deterministic agent logic and seeded records
+
+### Phase 4: Real Autonomous Product Infrastructure
 
 Goal:
-- replace one mock path with a real source of truth
+- make the backend and runtime layer real enough that the rest of the product can build on it without architectural rework
+
+This is the infrastructure milestone that turns Authrix from a hybrid prototype into a real product foundation.
 
 Deliverables:
-- GitHub integration (real API calls through mediated backend)
-- normalized engineering activity pipeline
-- Engineering Agent output from real repository activity
-- downstream task generation from real data
+- live OpenClaw runtime adapter through the runtime bridge
+- runtime provider selection and health/status visibility
+- runtime-backed session creation and session inspection
+- runtime-backed execution path for at least one real Authrix agent flow
+- durable persistence for workspace records, agent runs, approvals, and timeline entries
+- background refresh and ingestion jobs through a real job path
+- removal of seeded/mock workspace assembly as the default product path
+- explicit mock mode only as fallback or developer mode
+- approval-backed mediated write execution path ready for real integrations
 
-### Phase 6: Runtime Wiring
+Definition of done:
+- a user can log into Authrix
+- connect GitHub through Auth0
+- ingest real engineering activity
+- persist product records in a durable store
+- execute at least one real product agent flow through the runtime
+- inspect runtime status from the control tower
+- see approvals, tasks, and timeline entries built from persisted product state
+- continue operating without relying on seeded mock workspace state as the primary path
+
+This is the key Phase 4 principle:
+- at the end of Phase 4, Authrix should have real product infrastructure ready for deeper feature expansion
+
+### Phase 5: Real Product Expansion
 
 Goal:
-- connect Authrix product behavior to the real autonomous runtime
+- expand the live product into the rest of the operational surface
 
 Deliverables:
-- real runtime bridge implementation (calling OpenClaw gateway API)
-- OpenClaw gateway configuration for Authrix use cases
-- agent execution through runtime instead of local functions
-- session persistence through runtime
-- background job execution through runtime
+- docs and meeting pipeline on real persisted records
+- workflow ownership and follow-up on live data
+- devops and cost ingestion on live data
+- richer approval execution
+- additional integrations beyond GitHub
 
-### Phase 7: Auth and Identity
+## What Changes Now
 
-Goal:
-- add real authentication and delegated token management
+The roadmap now assumes:
+- the real product path is the default path
+- mocks are only fallback tools
+- earlier phases are considered complete only in foundation terms
+- Phase 4 is where Authrix stops being mainly a well-structured prototype and becomes real product infrastructure
 
-Deliverables:
-- Auth0 integration for user login
-- Token Vault integration for third-party access
-- secure backend execution adapters
-- approval-aware external action flow
-- auditability around delegated actions
-
-### Phase 8: UI Refinement and Polish
-
-Goal:
-- make the control tower demo-ready and professional
-
-Deliverables:
-- visual polish across all pages
-- responsive design
-- transitions and micro-interactions
-- edge state handling
-- demo flow optimization
-
-### Phase 9: Docs, Meeting, and Workflow Depth
-
-Goal:
-- expand from engineering intelligence into broader operational intelligence
-
-Deliverables:
-- manual meeting upload flow
-- transcription and extraction pipeline
-- Docs Agent outputs for notes and decision logs
-- Workflow Agent outputs for ownership and follow-up tracking
-- cross-linking between meetings, tasks, decisions, and engineering work
+That means the next implementation work inside Phase 4 should focus on:
+- persistent storage
+- runtime-backed execution for a real agent pipeline
+- live background sync/refresh
+- eliminating seeded workspace assembly as the default backend path
 
 ## Current Status
 
-Phase 0 is complete. The vision, runtime relationship, and development priorities are aligned.
+Current status under the real-product interpretation:
 
-Next step: begin Phase 1 — scaffold the project, define types, build the runtime bridge interface, and implement the mock backend.
+- Phase 0: complete
+- Phase 1: complete in foundation form
+- Phase 2: complete in foundation form
+- Phase 3: complete in hybrid form
+- Phase 4: complete
+
+Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation that is ready for deeper product expansion.

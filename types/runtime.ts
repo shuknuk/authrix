@@ -8,10 +8,15 @@ export interface ExecutionMetadata {
   executionTimeMs: number;
   timestamp: string;
   sessionId?: string;
+  provider: RuntimeProvider;
 }
 
 export interface SessionConfig {
   label?: string;
+  agentId?: string;
+  key?: string;
+  model?: string;
+  parentSessionKey?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -29,6 +34,20 @@ export interface ToolResult {
   error?: string;
 }
 
+export type RuntimeProvider = "mock" | "openclaw";
+
+export interface RuntimeStatus {
+  provider: RuntimeProvider;
+  mode: "mock" | "live" | "disconnected";
+  configured: boolean;
+  healthy: boolean;
+  description: string;
+  checkedAt: string;
+  url?: string;
+  agentId?: string;
+  availableMethods?: string[];
+}
+
 export type JobState = "queued" | "running" | "completed" | "failed";
 
 export interface JobStatus {
@@ -42,10 +61,15 @@ export interface JobStatus {
 }
 
 export interface RuntimeBridge {
+  readonly provider: RuntimeProvider;
+
+  getStatus(): Promise<RuntimeStatus>;
+
   executeAgent<TInput, TOutput>(request: {
     agentId: string;
     input: TInput;
     tools?: string[];
+    sessionId?: string;
   }): Promise<{ output: TOutput; metadata: ExecutionMetadata }>;
 
   createSession(config: SessionConfig): Promise<Session>;

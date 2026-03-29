@@ -7,11 +7,15 @@ import {
 } from "@/lib/auth/token-vault";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
+import { getRuntimeBridge } from "@/lib/runtime/bridge";
 
 export default async function ConnectionsPage() {
   await requireSession("/connections");
 
-  const snapshot = await getWorkspaceSnapshot();
+  const [snapshot, runtimeStatus] = await Promise.all([
+    getWorkspaceSnapshot(),
+    getRuntimeBridge().getStatus(),
+  ]);
   const integrations = snapshot.integrations;
   const githubConnectionName = getGitHubConnectionName();
   const githubConnectHref = githubConnectionName
@@ -24,6 +28,100 @@ export default async function ConnectionsPage() {
         title="Connections"
         description="Manage external systems that Authrix can observe or act on through a mediated backend layer."
       />
+
+      <CardShell
+        title="Autonomous Runtime"
+        description="Authrix keeps the product layer separate from the runtime foundation so we can swap between local mock execution and a live always-on backend."
+      >
+        <div className="flex items-start justify-between gap-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium text-zinc-200">Runtime adapter</p>
+              <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                {runtimeStatus.provider}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-zinc-500">{runtimeStatus.description}</p>
+            {runtimeStatus.url ? (
+              <p className="mt-2 text-[11px] text-zinc-600">
+                Gateway URL: {runtimeStatus.url}
+              </p>
+            ) : null}
+            {runtimeStatus.agentId ? (
+              <p className="mt-2 text-[11px] text-zinc-600">
+                Default runtime agent: {runtimeStatus.agentId}
+              </p>
+            ) : null}
+            {runtimeStatus.availableMethods && runtimeStatus.availableMethods.length > 0 ? (
+              <p className="mt-2 text-[11px] text-zinc-600">
+                Available methods: {runtimeStatus.availableMethods.length}
+              </p>
+            ) : null}
+          </div>
+          <span
+            className={`rounded-full px-3 py-1 text-xs ${
+              runtimeStatus.mode === "live"
+                ? "bg-green-900/30 text-green-400"
+                : runtimeStatus.mode === "mock"
+                  ? "bg-zinc-800 text-zinc-400"
+                  : "bg-amber-900/30 text-amber-400"
+            }`}
+          >
+            {runtimeStatus.mode === "live"
+              ? "Live"
+              : runtimeStatus.mode === "mock"
+                ? "Mock"
+                : "Disconnected"}
+          </span>
+        </div>
+      </CardShell>
+
+      <CardShell
+        title="Product State"
+        description="This is the persisted backend state that powers the control tower. Pipeline health is shown honestly so fallback paths stay visible."
+      >
+        <div className="space-y-3">
+          <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3 text-xs text-zinc-400">
+            <p>Storage: {snapshot.state.storage}</p>
+            <p className="mt-2">
+              Last refreshed: {new Date(snapshot.state.refreshedAt).toLocaleString()}
+            </p>
+            <p className="mt-2">
+              Last persisted: {new Date(snapshot.state.persistedAt).toLocaleString()}
+            </p>
+          </div>
+          {snapshot.state.pipelines.map((pipeline) => (
+            <div
+              key={pipeline.id}
+              className="flex items-start justify-between gap-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium text-zinc-200">{pipeline.label}</p>
+                  <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                    {pipeline.provider}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">{pipeline.message}</p>
+                <p className="mt-2 text-[11px] text-zinc-600">
+                  Updated {new Date(pipeline.updatedAt).toLocaleString()}
+                </p>
+              </div>
+              <span
+                className={`rounded-full px-3 py-1 text-xs ${
+                  pipeline.health === "ready"
+                    ? "bg-green-900/30 text-green-400"
+                    : pipeline.health === "fallback"
+                      ? "bg-amber-900/30 text-amber-400"
+                      : "bg-red-900/30 text-red-400"
+                }`}
+              >
+                {pipeline.health}
+              </span>
+            </div>
+          ))}
+        </div>
+      </CardShell>
 
       <CardShell
         title="Integration Status"
