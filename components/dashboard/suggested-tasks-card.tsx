@@ -69,6 +69,12 @@ export function SuggestedTasksCard({
               </div>
               <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-600">
                 <span>{task.source}</span>
+                {!compact && task.suggestedOwner ? (
+                  <span>Owner: {task.suggestedOwner}</span>
+                ) : null}
+                {!compact && task.dueDate ? (
+                  <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                ) : null}
                 {!compact ? <span>Status: {task.status}</span> : null}
                 {!compact ? <span>Agent: {task.sourceAgentId}</span> : null}
               </div>

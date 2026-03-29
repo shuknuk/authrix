@@ -11,7 +11,7 @@ export const mockMeetingDocuments: SourceDocument[] = [
     participants: ["Soham", "Kinshuk"],
     content: [
       "Decision: Authrix will keep Auth0 Token Vault as the only delegated credential path for external actions.",
-      "Decision: OpenClaw remains an implementation detail inside the runtime layer rather than part of the product-facing narrative.",
+      "Decision: Authrix's runtime lineage remains an internal implementation detail rather than part of the product-facing narrative.",
       "Action: Kinshuk to finish the Auth0 tenant and GitHub connected-account setup by 2026-03-31.",
       "Action: Soham to tighten the onboarding copy and setup walkthrough for the control tower by 2026-04-02.",
       "Open question: Should the first approved write create a GitHub issue or draft a documentation update?",
@@ -25,7 +25,7 @@ export const mockMeetingDocuments: SourceDocument[] = [
       },
       {
         speaker: "Soham",
-        text: "Decision: OpenClaw remains an implementation detail inside the runtime layer rather than part of the product-facing narrative.",
+        text: "Decision: Authrix's runtime lineage remains an internal implementation detail rather than part of the product-facing narrative.",
         timestamp: "2026-03-27T17:33:00Z",
       },
       {

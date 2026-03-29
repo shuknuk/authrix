@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOptionalSession } from "@/lib/auth/session";
 import { isAuthConfigured } from "@/lib/auth/auth0";
 import { getCostReport, updateWorkspaceCostReport } from "@/lib/data/workspace";
+import type { CostReport } from "@/types/domain";
 
 export async function GET() {
   if (isAuthConfigured) {
@@ -22,9 +23,30 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await request.json();
+  const body = (await request.json()) as Partial<CostReport>;
 
-  const snapshot = await updateWorkspaceCostReport(body);
+  if (
+    !body ||
+    !body.id ||
+    !body.period?.start ||
+    !body.period?.end ||
+    typeof body.totalSpend !== "number" ||
+    !body.currency ||
+    !Array.isArray(body.breakdown) ||
+    !Array.isArray(body.anomalies) ||
+    !body.riskLevel ||
+    !body.summary
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "A valid cost report payload is required: id, period, totalSpend, currency, breakdown, anomalies, riskLevel, and summary.",
+      },
+      { status: 400 }
+    );
+  }
+
+  const snapshot = await updateWorkspaceCostReport(body as CostReport);
   return NextResponse.json({
     report: snapshot.costReport,
     state: snapshot.state,

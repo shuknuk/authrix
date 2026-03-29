@@ -7,6 +7,10 @@ export function workflowAgent(
   const meetingArtifacts = input.meetingArtifacts ?? [];
   const existingTasks = input.existingTasks ?? [];
   const seenTaskTitles = new Set(existingTasks.map((task) => normalize(task.title)));
+  const generatedAt =
+    meetingArtifacts[0]?.generatedAt ??
+    input.engineeringSummary?.generatedAt ??
+    new Date().toISOString();
 
   const tasks = [
     ...buildActionTasks(meetingArtifacts, seenTaskTitles),
@@ -15,7 +19,12 @@ export function workflowAgent(
 
   return {
     tasks,
-    alerts: buildWorkflowAlerts(meetingArtifacts, input.engineeringSummary),
+    alerts: buildWorkflowAlerts(
+      meetingArtifacts,
+      existingTasks,
+      generatedAt,
+      input.engineeringSummary
+    ),
   };
 }
 
@@ -86,6 +95,8 @@ function buildOpenQuestionTasks(
 
 function buildWorkflowAlerts(
   meetingArtifacts: MeetingArtifact[],
+  existingTasks: SuggestedTask[],
+  generatedAt: string,
   engineeringSummary?: WorkflowAgentInput["engineeringSummary"]
 ): RiskAlert[] {
   const alerts: RiskAlert[] = [];
@@ -119,6 +130,42 @@ function buildWorkflowAlerts(
         relatedRecordIds: [artifact.id],
       });
     }
+  }
+
+  const openTasks = existingTasks.filter((task) => task.status !== "completed");
+  const overdueTasks = openTasks.filter(
+    (task) => task.dueDate && new Date(task.dueDate).getTime() < Date.now()
+  );
+  if (overdueTasks.length > 0) {
+    alerts.push({
+      id: "risk-workflow-overdue-tasks",
+      workspaceId: "workspace-authrix",
+      title: "Follow-up tasks are overdue",
+      description: `${overdueTasks.length} task(s) have passed their due date without being completed.`,
+      severity: "high",
+      category: "workflow",
+      sourceAgentId: "workflow",
+      createdAt: generatedAt,
+      relatedRecordIds: overdueTasks.map((task) => task.id),
+    });
+  }
+
+  const unownedHighPriorityTasks = openTasks.filter(
+    (task) =>
+      !task.suggestedOwner && (task.priority === "high" || task.priority === "critical")
+  );
+  if (unownedHighPriorityTasks.length > 0) {
+    alerts.push({
+      id: "risk-workflow-unowned-priority-tasks",
+      workspaceId: "workspace-authrix",
+      title: "Priority tasks are missing owners",
+      description: `${unownedHighPriorityTasks.length} high-priority task(s) still need a clear owner.`,
+      severity: "medium",
+      category: "workflow",
+      sourceAgentId: "workflow",
+      createdAt: generatedAt,
+      relatedRecordIds: unownedHighPriorityTasks.map((task) => task.id),
+    });
   }
 
   if ((engineeringSummary?.riskFlags.length ?? 0) > 0 && meetingArtifacts.length === 0) {

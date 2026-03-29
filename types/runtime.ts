@@ -1,7 +1,8 @@
 // ---------------------------------------------------------------------------
 // Runtime bridge interface
 // This is the key architectural seam between Authrix product code and the
-// autonomous runtime (OpenClaw). Mocked for MVP, swapped for real later.
+// internal autonomous runtime layer. Mock and live implementations can sit
+// behind this seam without changing product code.
 // ---------------------------------------------------------------------------
 
 export interface ExecutionMetadata {

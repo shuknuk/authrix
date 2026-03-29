@@ -85,7 +85,7 @@ export async function connectToOpenClawGateway(
 
   if (typeof WebSocketCtor !== "function") {
     throw new Error(
-      "This Node runtime does not expose a WebSocket client. OpenClaw connectivity requires a WebSocket-capable server runtime."
+      "This Node runtime does not expose a WebSocket client. Authrix runtime connectivity requires a WebSocket-capable server runtime."
     );
   }
 
@@ -122,7 +122,7 @@ export async function connectToOpenClawGateway(
     const handleOpen = () => {
       clearConnectTimeout();
       connectTimeoutId = setTimeout(() => {
-        rejectConnection(new Error("Timed out waiting for OpenClaw gateway challenge."));
+        rejectConnection(new Error("Timed out waiting for the runtime transport challenge."));
       }, CONNECT_TIMEOUT_MS);
       connectTimeoutId.unref?.();
     };
@@ -148,7 +148,7 @@ export async function connectToOpenClawGateway(
             : null;
 
         if (!nonce) {
-          rejectConnection(new Error("OpenClaw gateway challenge did not include a nonce."));
+          rejectConnection(new Error("The runtime transport challenge did not include a nonce."));
           socket.close(1008, "missing connect nonce");
           return;
         }
@@ -183,7 +183,7 @@ export async function connectToOpenClawGateway(
 
       if (!frame.ok) {
         const error = new OpenClawGatewayRequestError(
-          frame.error?.message ?? "OpenClaw gateway request failed.",
+          frame.error?.message ?? "Runtime transport request failed.",
           {
             code: frame.error?.code,
             details: frame.error?.details,
@@ -207,7 +207,7 @@ export async function connectToOpenClawGateway(
 
     const handleError = () => {
       rejectConnection(
-        new Error(`Could not connect to the OpenClaw gateway at ${config.url}.`)
+        new Error(`Could not connect to the configured Authrix runtime endpoint at ${config.url}.`)
       );
     };
 
@@ -215,7 +215,7 @@ export async function connectToOpenClawGateway(
       connectionClosed = true;
       const description =
         event.reason?.trim() ||
-        `OpenClaw gateway closed the connection with code ${event.code}.`;
+        `The runtime transport closed the connection with code ${event.code}.`;
       const error = new Error(description);
 
       rejectConnection(error);
@@ -301,7 +301,7 @@ export async function connectToOpenClawGateway(
     options?: { expectFinal?: boolean; timeoutMs?: number | null }
   ): Promise<T> {
     if (socket.readyState !== WebSocketCtor.OPEN) {
-      throw new Error("OpenClaw gateway is not connected.");
+      throw new Error("The Authrix runtime transport is not connected.");
     }
 
     return sendRequest<T>(method, params, options).promise;
@@ -335,7 +335,7 @@ export async function connectToOpenClawGateway(
               pending.delete(id);
               reject(
                 new Error(
-                  `OpenClaw gateway request timed out for "${method}" after ${timeoutMs}ms.`
+                  `Runtime transport request timed out for "${method}" after ${timeoutMs}ms.`
                 )
               );
             }, timeoutMs);

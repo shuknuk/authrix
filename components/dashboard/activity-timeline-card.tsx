@@ -17,7 +17,7 @@ export function ActivityTimelineCard({
   return (
     <CardShell
       title="Activity Timeline"
-      description="Recent engineering and operational events flowing into Authrix."
+      description="Recent engineering, meeting, workflow, and operational events flowing into Authrix."
     >
       {visibleEntries.length === 0 ? (
         <EmptyState
@@ -27,7 +27,18 @@ export function ActivityTimelineCard({
       ) : (
         <div className="space-y-3">
           {visibleEntries.map((entry) => {
-            const metadata = entry.metadata as Record<string, string>;
+            const metadata = entry.metadata as Record<string, unknown>;
+            const badges = [
+              typeof metadata.repo === "string" ? metadata.repo : null,
+              typeof metadata.author === "string" ? metadata.author : null,
+              typeof metadata.documentType === "string" ? metadata.documentType : null,
+              typeof metadata.category === "string" ? metadata.category : null,
+              typeof metadata.severity === "string" ? metadata.severity : null,
+              typeof metadata.status === "string" ? metadata.status : null,
+              typeof metadata.participants === "string" && metadata.participants
+                ? metadata.participants
+                : null,
+            ].filter((value): value is string => Boolean(value));
 
             return (
               <div
@@ -48,10 +59,13 @@ export function ActivityTimelineCard({
                   <p className="mt-1 text-xs leading-5 text-zinc-500">
                     {entry.description}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-600">
-                    {metadata.repo ? <span>{metadata.repo}</span> : null}
-                    {metadata.author ? <span>{metadata.author}</span> : null}
-                  </div>
+                  {badges.length > 0 ? (
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-600">
+                      {badges.map((badge) => (
+                        <span key={`${entry.id}-${badge}`}>{badge}</span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );
