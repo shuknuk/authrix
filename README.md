@@ -35,3 +35,22 @@ See `/docs/agent-security-architecture.md` for details.
 
 Authrix uses a `Regular Web App` in Auth0 and keeps delegated third-party access on the backend.
 
+To use GitHub through Auth0 Connected Accounts / Token Vault, make sure your Auth0 tenant is set up with:
+- Token Vault enabled
+- My Account API enabled
+- Refresh Tokens and MRRT enabled for the application
+- a GitHub connected account configured for Token Vault
+- Offline Access enabled in the GitHub connection permissions
+
+## Local GitHub Setup
+
+Authrix now supports a real GitHub ingestion path with clean fallbacks.
+
+1. Add `GITHUB_OWNER` and `GITHUB_REPO` to `.env.local` to point at the repo you want to ingest.
+2. Optional: add `GITHUB_PERSONAL_ACCESS_TOKEN` for higher rate limits or private repos.
+3. Set `AUTH0_GITHUB_CONNECTION_NAME` to your Auth0 GitHub connection name.
+4. Optional: set `AUTH0_GITHUB_CONNECTION_SCOPES` if you want scopes other than `repo,read:org`.
+5. Optional: add `AUTH0_TOKEN_VAULT_GITHUB_ACCESS_TOKEN` only if you need a local override during development.
+
+If no live GitHub configuration is present, Authrix stays in mock mode and labels that clearly in the Connections page. When Auth0 is configured, the Connections page exposes a `Connect GitHub With Auth0` action that uses the SDK's built-in `/auth/connect` flow.
+

@@ -1,6 +1,10 @@
 import { CardShell } from "@/components/ui/card-shell";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
+import {
+  getGitHubConnectionName,
+  getGitHubConnectionScopes,
+} from "@/lib/auth/token-vault";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 
@@ -9,6 +13,10 @@ export default async function ConnectionsPage() {
 
   const snapshot = await getWorkspaceSnapshot();
   const integrations = snapshot.integrations;
+  const githubConnectionName = getGitHubConnectionName();
+  const githubConnectHref = githubConnectionName
+    ? buildGitHubConnectHref(githubConnectionName, getGitHubConnectionScopes())
+    : null;
 
   return (
     <div className="space-y-6">
@@ -31,21 +39,52 @@ export default async function ConnectionsPage() {
             {integrations.map((integration) => (
               <div
                 key={integration.service}
-                className="flex items-center justify-between rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
+                className="flex items-start justify-between gap-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
               >
-                <div>
-                  <p className="text-sm font-medium text-zinc-200">
-                    {integration.service}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-medium text-zinc-200">
+                      {integration.service}
+                    </p>
+                    {integration.mode ? (
+                      <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                        {integration.mode}
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {integration.description ??
+                      (integration.connected
+                        ? "Delegated access is available."
+                        : "Waiting for delegated access.")}
                   </p>
-                  {integration.connected && integration.scopes ? (
-                    <p className="mt-1 text-xs text-zinc-500">
+                  {integration.scopes && integration.scopes.length > 0 ? (
+                    <p className="mt-2 text-[11px] text-zinc-600">
                       Scopes: {integration.scopes.join(", ")}
                     </p>
-                  ) : (
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Waiting for delegated access.
+                  ) : null}
+                  {integration.lastSyncedAt ? (
+                    <p className="mt-2 text-[11px] text-zinc-600">
+                      Last sync:{" "}
+                      {new Date(integration.lastSyncedAt).toLocaleString()}
                     </p>
-                  )}
+                  ) : null}
+                  {integration.service === "GitHub" && githubConnectHref ? (
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {integration.mode !== "token-vault" ? (
+                        <a
+                          href={githubConnectHref}
+                          className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800"
+                        >
+                          Connect GitHub With Auth0
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-green-800/50 bg-green-900/20 px-3 py-1.5 text-xs font-medium text-green-300">
+                          Delegated GitHub access active
+                        </span>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
                 <span
                   className={`rounded-full px-3 py-1 text-xs ${
@@ -56,7 +95,13 @@ export default async function ConnectionsPage() {
                         : "bg-zinc-800 text-zinc-500"
                   }`}
                 >
-                  {integration.connected ? "Connected" : "Not connected"}
+                  {integration.status === "error"
+                    ? "Fallback"
+                    : integration.connected
+                      ? "Connected"
+                      : integration.mode === "mock"
+                        ? "Mock"
+                        : "Not connected"}
                 </span>
               </div>
             ))}
@@ -65,4 +110,15 @@ export default async function ConnectionsPage() {
       </CardShell>
     </div>
   );
+}
+
+function buildGitHubConnectHref(connectionName: string, scopes: string[]): string {
+  const params = new URLSearchParams({
+    connection: connectionName,
+    returnTo: "/connections",
+  });
+
+  scopes.forEach((scope) => params.append("scopes", scope));
+
+  return `/auth/connect?${params.toString()}`;
 }
