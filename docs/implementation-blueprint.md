@@ -504,9 +504,10 @@ Deliverables:
 - startup and restart guidance
 - connection onboarding for the main product path
 - first real deployment smoke test checklist
+- operator-visible deployment readiness and smoke-test surfaces
 
 Status:
-- not started
+- complete
 
 ### Phase 8: Broader Operational Depth
 
@@ -547,5 +548,6 @@ Current status under the corrected product interpretation:
 - Phase 4: complete
 - Phase 5: complete
 - Phase 6: complete
+- Phase 7: complete
 
-Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation with baseline deployment guardrails, runtime tool policy enforcement, and operator-visible security posture. The reused runtime lineage remains internal to the product rather than exposed as a separate dependency narrative.
+Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation with baseline deployment guardrails, runtime tool policy enforcement, operator-visible security posture, and a real worker-box bring-up path. The reused runtime lineage remains internal to the product rather than exposed as a separate dependency narrative.

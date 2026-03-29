@@ -44,8 +44,31 @@ Baseline guardrails already present in the codebase:
 - approval execution rejects already-resolved requests
 - control-tower security posture is visible through `/api/security/status` and the Connections page
 - policy-blocked runtime and approval events are persisted and visible through `/api/security/events`
+- deployment bring-up readiness is visible through `/api/deployment/readiness`
+- deployment smoke-test results are visible through `/api/deployment/smoke-test`
 
 The deeper sandbox hardening phase will build on top of these guardrails instead of replacing them later.
+
+## Worker-Box Bring-Up
+
+Authrix now includes a Phase 7 bring-up layer for dedicated worker machines.
+
+What is included:
+- deployment readiness checks in the Connections page
+- deployment smoke-test results in the control tower
+- `npm run check:worker-box` for local worker-box config validation
+- `npm run smoke:worker-box` for first-pass deployment smoke checks
+- a dedicated runbook at [docs/worker-box-runbook.md](docs/worker-box-runbook.md)
+
+Recommended first bring-up flow:
+
+```powershell
+npm.cmd install
+npm.cmd run build
+npm.cmd run check:worker-box
+npm.cmd run start
+npm.cmd run smoke:worker-box
+```
 
 ## Local Auth0 Setup
 
@@ -201,6 +224,16 @@ Authrix now exposes a persisted refresh job path:
   Inspect one refresh job
 
 This is the first real job surface for the control tower and is separate from the direct `/api/workspace/state` refresh path.
+
+## Deployment APIs
+
+Phase 7 adds operator-facing bring-up APIs:
+
+- `GET /api/deployment/readiness`
+  Returns the current worker-box readiness report, including deployment checks and onboarding checklist state.
+
+- `GET /api/deployment/smoke-test`
+  Runs non-destructive deployment smoke checks over persisted state, runtime status, security posture, and job surfaces.
 
 ## Approval-Backed GitHub Writes
 

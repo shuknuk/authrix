@@ -1,4 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
+import { DeploymentReadinessCard } from "@/components/dashboard/deployment-readiness-card";
+import { DeploymentSmokeTestCard } from "@/components/dashboard/deployment-smoke-test-card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 import {
@@ -7,6 +9,10 @@ import {
 } from "@/lib/auth/token-vault";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
+import {
+  getDeploymentReadinessReport,
+  runDeploymentSmokeTest,
+} from "@/lib/deployment/readiness";
 import { getRuntimeBridge } from "@/lib/runtime/bridge";
 import { getSecurityPosture } from "@/lib/security/status";
 import { SecurityPostureCard } from "@/components/dashboard/security-posture-card";
@@ -16,11 +22,20 @@ import { SecurityEventsCard } from "@/components/dashboard/security-events-card"
 export default async function ConnectionsPage() {
   await requireSession("/connections");
 
-  const [snapshot, runtimeStatus, securityPosture, securityEvents] = await Promise.all([
+  const [
+    snapshot,
+    runtimeStatus,
+    securityPosture,
+    securityEvents,
+    readinessReport,
+    smokeReport,
+  ] = await Promise.all([
     getWorkspaceSnapshot(),
     getRuntimeBridge().getStatus(),
     Promise.resolve(getSecurityPosture()),
     listSecurityEvents(6),
+    getDeploymentReadinessReport(),
+    runDeploymentSmokeTest(),
   ]);
   const integrations = snapshot.integrations;
   const githubConnectionName = getGitHubConnectionName();
@@ -36,6 +51,8 @@ export default async function ConnectionsPage() {
       />
 
       <SecurityPostureCard posture={securityPosture} />
+      <DeploymentReadinessCard report={readinessReport} />
+      <DeploymentSmokeTestCard report={smokeReport} />
 
       <CardShell
         title="Autonomous Runtime"
