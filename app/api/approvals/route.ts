@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOptionalSession } from "@/lib/auth/session";
 import { isAuthConfigured } from "@/lib/auth/auth0";
 import {
+  getApprovalRequestById,
   getApprovalRequests,
+  recordApprovalExecutionResult,
   updateApprovalRequest,
 } from "@/lib/data/workspace";
+import { executeGitHubApprovalAction } from "@/lib/github/write";
 
 export async function GET() {
   if (isAuthConfigured) {
@@ -35,6 +38,15 @@ export async function PATCH(request: NextRequest) {
   const approval = await updateApprovalRequest(id, status, actor);
   if (!approval) {
     return NextResponse.json({ error: "Approval not found" }, { status: 404 });
+  }
+
+  if (status === "approved") {
+    const latestApproval = await getApprovalRequestById(id);
+    if (latestApproval) {
+      const execution = await executeGitHubApprovalAction(latestApproval);
+      const finalizedApproval = await recordApprovalExecutionResult(id, execution);
+      return NextResponse.json(finalizedApproval ?? approval);
+    }
   }
 
   return NextResponse.json(approval);

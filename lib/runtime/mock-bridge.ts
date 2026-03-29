@@ -10,10 +10,24 @@ const jobs: Map<string, JobStatus> = new Map();
 
 export function createMockBridge(): RuntimeBridge {
   return {
+    provider: "mock",
+
+    async getStatus() {
+      return {
+        provider: "mock",
+        mode: "mock",
+        configured: true,
+        healthy: true,
+        description: "Authrix is using the local mock runtime bridge.",
+        checkedAt: new Date().toISOString(),
+      };
+    },
+
     async executeAgent<TInput, TOutput>(request: {
       agentId: string;
       input: TInput;
       tools?: string[];
+      sessionId?: string;
     }) {
       const start = Date.now();
 
@@ -29,6 +43,7 @@ export function createMockBridge(): RuntimeBridge {
         metadata: {
           executionTimeMs: Date.now() - start,
           timestamp: new Date().toISOString(),
+          provider: "mock",
         },
       };
     },

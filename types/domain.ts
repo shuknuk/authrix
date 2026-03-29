@@ -287,6 +287,9 @@ export interface AgentRunRecord {
   completedAt?: string;
   inputSummary: string;
   outputSummary: string;
+  provider?: "local" | "runtime";
+  runtimeSessionId?: string;
+  fallbackReason?: string;
   relatedRecordIds: string[];
 }
 
@@ -310,8 +313,33 @@ export interface IntegrationStatus {
   lastSyncedAt?: string;
 }
 
+export type WorkspacePipelineProvider =
+  | "github"
+  | "local"
+  | "runtime"
+  | "mock";
+
+export type WorkspacePipelineHealth = "ready" | "fallback" | "error";
+
+export interface WorkspacePipelineStatus {
+  id: string;
+  label: string;
+  provider: WorkspacePipelineProvider;
+  health: WorkspacePipelineHealth;
+  message: string;
+  updatedAt: string;
+}
+
+export interface WorkspaceStateInfo {
+  storage: "filesystem";
+  refreshedAt: string;
+  persistedAt: string;
+  pipelines: WorkspacePipelineStatus[];
+}
+
 export interface WorkspaceSnapshot {
   workspace: Workspace;
+  state: WorkspaceStateInfo;
   integrations: IntegrationStatus[];
   sourceEvents: SourceEvent[];
   sourceDocuments: SourceDocument[];
