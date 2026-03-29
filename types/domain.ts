@@ -305,6 +305,9 @@ export interface IntegrationStatus {
   connectedAt?: string;
   scopes?: string[];
   status: "active" | "inactive" | "error";
+  mode?: "mock" | "live" | "token-vault";
+  description?: string;
+  lastSyncedAt?: string;
 }
 
 export interface WorkspaceSnapshot {

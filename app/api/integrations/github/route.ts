@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { getOptionalSession } from "@/lib/auth/session";
 import { isAuthConfigured } from "@/lib/auth/auth0";
-import {
-  getWorkspaceSnapshot,
-  refreshWorkspaceSnapshot,
-} from "@/lib/data/workspace";
+import { refreshWorkspaceSnapshot } from "@/lib/data/workspace";
+import { getGitHubIngestionResult } from "@/lib/github/service";
 
 export async function GET() {
   if (isAuthConfigured) {
@@ -14,8 +12,8 @@ export async function GET() {
     }
   }
 
-  const snapshot = await getWorkspaceSnapshot();
-  return NextResponse.json(snapshot);
+  const github = await getGitHubIngestionResult();
+  return NextResponse.json(github);
 }
 
 export async function POST() {
@@ -26,6 +24,8 @@ export async function POST() {
     }
   }
 
-  const snapshot = await refreshWorkspaceSnapshot();
-  return NextResponse.json(snapshot);
+  await refreshWorkspaceSnapshot();
+  const github = await getGitHubIngestionResult();
+
+  return NextResponse.json(github);
 }

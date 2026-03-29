@@ -23,9 +23,10 @@ export const auth0 = isAuthConfigured
       secret: auth0Env.secret,
       appBaseUrl: auth0Env.appBaseUrl,
       signInReturnToPath: "/dashboard",
+      enableConnectAccountEndpoint: true,
       enableAccessTokenEndpoint: false,
       authorizationParameters: {
-        scope: "openid profile email",
+        scope: "openid profile email offline_access",
       },
     })
   : null;

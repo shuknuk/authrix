@@ -5,12 +5,14 @@ import {
   taskAgent,
   workflowAgent,
 } from "@/lib/agents";
+import { isAuthConfigured } from "@/lib/auth/auth0";
 import {
-  mockGitHubEvents,
-  normalizeGitHubEvents,
-} from "@/lib/mock/github-activity";
-import { mockIntegrations } from "@/lib/mock/integrations";
+  getAuth0IntegrationStatus,
+  getGitHubIngestionResult,
+} from "@/lib/github/service";
 import { mockMeetingDocuments } from "@/lib/mock/meeting-documents";
+import { normalizeGitHubEvents } from "@/lib/mock/github-activity";
+import { mockIntegrations } from "@/lib/mock/integrations";
 import {
   mockCostAnomalies,
   mockCostBreakdown,
@@ -25,6 +27,7 @@ import type {
   DecisionRecord,
   EngineeringActivity,
   EngineeringSummary,
+  GitHubEvent,
   IntegrationStatus,
   MeetingArtifact,
   ProposedAction,
@@ -51,13 +54,30 @@ const SUMMARY_PERIOD = {
 };
 
 let workspaceState: WorkspaceSnapshot | null = null;
+let workspaceStatePromise: Promise<WorkspaceSnapshot> | null = null;
 
 export async function getWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
-  if (!workspaceState) {
-    workspaceState = buildWorkspaceSnapshot();
+  if (isAuthConfigured) {
+    return buildWorkspaceSnapshot();
   }
 
-  return workspaceState;
+  if (workspaceState) {
+    return workspaceState;
+  }
+
+  if (!workspaceStatePromise) {
+    workspaceStatePromise = buildWorkspaceSnapshot()
+      .then((snapshot) => {
+        workspaceState = snapshot;
+        return snapshot;
+      })
+      .catch((error) => {
+        workspaceStatePromise = null;
+        throw error;
+      });
+  }
+
+  return workspaceStatePromise;
 }
 
 export async function getEngineeringSummary(): Promise<EngineeringSummary> {
@@ -98,6 +118,12 @@ export async function getRiskAlerts(): Promise<RiskAlert[]> {
 
 export async function getAgentRuns(): Promise<AgentRunRecord[]> {
   return (await getWorkspaceSnapshot()).agentRuns;
+}
+
+export async function refreshWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
+  workspaceState = null;
+  workspaceStatePromise = null;
+  return getWorkspaceSnapshot();
 }
 
 export async function updateApprovalRequest(
@@ -170,8 +196,9 @@ export async function updateApprovalRequest(
   return approval;
 }
 
-function buildWorkspaceSnapshot(): WorkspaceSnapshot {
-  const integrations = cloneIntegrations(mockIntegrations);
+async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
+  const githubIngestion = await getGitHubIngestionResult();
+  const integrations = buildIntegrationStatuses(githubIngestion.integration);
   const workspace: Workspace = {
     id: WORKSPACE_ID,
     name: WORKSPACE_NAME,
@@ -179,9 +206,9 @@ function buildWorkspaceSnapshot(): WorkspaceSnapshot {
     integrations,
   };
 
-  const sourceEvents = buildSourceEvents();
+  const sourceEvents = buildSourceEvents(githubIngestion.events);
   const sourceDocuments = cloneSourceDocuments(mockMeetingDocuments);
-  const engineeringActivities = getEngineeringActivities();
+  const engineeringActivities = getEngineeringActivities(githubIngestion.events);
 
   const engineerRun = executeEngineerAgent(engineeringActivities);
   const docsRuns = sourceDocuments.map((document) =>
@@ -266,8 +293,8 @@ function buildWorkspaceSnapshot(): WorkspaceSnapshot {
   };
 }
 
-function buildSourceEvents(): SourceEvent[] {
-  return [...mockGitHubEvents]
+function buildSourceEvents(events: GitHubEvent[]): SourceEvent[] {
+  return [...events]
     .sort(sortByDateDesc("timestamp"))
     .map((event) => ({
       id: `source-${event.id}`,
@@ -284,8 +311,10 @@ function buildSourceEvents(): SourceEvent[] {
     }));
 }
 
-function getEngineeringActivities(): EngineeringActivity[] {
-  return normalizeGitHubEvents(mockGitHubEvents).sort(sortByDateDesc("timestamp"));
+function getEngineeringActivities(
+  events: GitHubEvent[]
+): EngineeringActivity[] {
+  return normalizeGitHubEvents(events).sort(sortByDateDesc("timestamp"));
 }
 
 function cloneIntegrations(
@@ -295,6 +324,26 @@ function cloneIntegrations(
     ...integration,
     scopes: integration.scopes ? [...integration.scopes] : undefined,
   }));
+}
+
+function buildIntegrationStatuses(
+  githubIntegration: IntegrationStatus
+): IntegrationStatus[] {
+  const baseIntegrations = cloneIntegrations(mockIntegrations).filter(
+    (integration) => integration.service !== "GitHub" && integration.service !== "Auth0"
+  );
+  const auth0Integration = getAuth0IntegrationStatus();
+
+  return [
+    {
+      ...auth0Integration,
+      connected: isAuthConfigured,
+      status: isAuthConfigured ? "active" : "inactive",
+      description: auth0Integration.description,
+    },
+    githubIntegration,
+    ...baseIntegrations,
+  ];
 }
 
 function cloneSourceDocuments(documents: SourceDocument[]): SourceDocument[] {
