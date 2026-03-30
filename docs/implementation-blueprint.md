@@ -176,6 +176,17 @@ Authrix uses specialized peer agents coordinated by backend logic and shared pro
 
 There is no fake master agent.
 
+The intended operating model is not "one magical agent that shape-shifts into everything."
+
+It is:
+- multiple named product agents
+- one shared workspace and memory layer
+- role-specific instructions and structured outputs
+- per-agent default model assignments
+- optional delegation to sub-agents when a task needs a different model, capability, or cost profile
+
+The control tower remains the oversight surface, but the long-term operating feel should be closer to "texting a startup operations team" than clicking isolated dashboard widgets.
+
 ### Engineering Agent
 
 Inputs:
@@ -236,6 +247,124 @@ Responsibilities:
 - detect anomalies
 - correlate operational drift with product activity
 - surface risk
+
+## Messaging and Agent Identity Model
+
+Authrix should support a professional messaging surface as a first-class product input.
+
+Recommended first messaging platform:
+- Slack
+
+Reason:
+- it is already used heavily by startups
+- threaded conversations map well to agent work
+- channels, DMs, and mentions provide flexible operating patterns
+- it fits the "startup teammate" mental model better than consumer-first messaging tools
+
+The initial messaging design should be:
+- one Authrix Slack app
+- one product-facing bot presence
+- internal routing to specialized agents
+- explicit agent identity shown in replies
+
+The first version should not require four separate Slack bots.
+
+That can come later if it proves useful, but the clean v1 product is:
+- one Authrix bot in Slack
+- one shared workspace
+- one central control tower
+- internal multi-agent routing behind the scenes
+
+When Authrix replies in chat, the system should make the responding agent visible:
+- `Engineer`
+- `Docs`
+- `Workflow`
+- `DevOps`
+
+This preserves the "team of agents" feel without creating unnecessary channel or bot sprawl.
+
+## Model Routing and LLM Strategy
+
+Authrix should not market or implement a fake "switch models magically" feature.
+
+Instead, the model system should be explicit and role-based:
+- each agent has a default model
+- a lightweight router can classify a request before execution
+- tasks may delegate to a sub-agent or a different model only when needed
+
+The initial LLM layer should be provider-backed and configurable, with Ollama Cloud as the first real target.
+
+Recommended initial model posture:
+- `Engineer`: premium reasoning model by default
+- `Docs`: fast mid-tier model by default
+- `Workflow`: fast mid-tier model by default
+- `DevOps`: stronger analytical model by default
+
+Recommended routing behavior:
+- simple formatting, status updates, and low-risk summaries -> cheaper fast model
+- code reasoning, technical investigation, architecture, and debugging -> stronger reasoning model
+- ambiguous requests -> classify first, then route
+- mixed requests -> split into per-agent work items
+
+Important rule:
+- model routing is a product concern
+- provider-specific APIs belong behind a clean provider adapter
+- agent modules should ask for capabilities, not hardcode transport logic everywhere
+
+## Shared Workspace and Multi-Agent Memory
+
+All specialized agents should operate over the same Authrix workspace state.
+
+That means:
+- one shared product memory
+- one shared record system
+- one shared decision/task/timeline surface
+- agent-specific identities layered on top of the same operational context
+
+This is a key part of the product feeling coherent.
+
+The user should not feel like they are talking to four disconnected bots.
+
+They should feel like:
+- one startup operations system
+- with distinct internal specialists
+- all aware of the same workspace reality
+
+## Provider and Routing Boundary
+
+The LLM layer should be introduced through a provider adapter rather than directly wiring agent code to one API.
+
+The first real provider target should be:
+- Ollama Cloud
+
+The abstraction should be able to grow later to support:
+- alternate hosted providers
+- internal runtime-managed model calls
+- per-agent provider overrides
+
+Suggested interface shape:
+
+```ts
+interface ModelProvider {
+  chat(request: ModelChatRequest): Promise<ModelChatResponse>
+}
+
+interface AgentModelRegistry {
+  getDefaultModel(agentId: AuthrixAgentId): string
+  getExecutionProfile(agentId: AuthrixAgentId): ExecutionProfile
+}
+
+interface AgentRouter {
+  classify(request: IncomingMessage): Promise<RouteDecision>
+  selectAgent(decision: RouteDecision): AuthrixAgentId
+  selectModel(decision: RouteDecision, agentId: AuthrixAgentId): string
+}
+```
+
+Important rule:
+- per-agent model defaults should live in one central registry
+- routing and cost optimization should be visible and explainable
+- delegated sub-agent work should be explicit in logs and the control tower
 
 ## Shared Product Records
 
@@ -554,6 +683,66 @@ Deliverables:
 Status:
 - not started
 
+### Phase 10: Slack Messaging Layer and Agent Identity Surface
+
+Goal:
+- make Authrix usable like an always-on startup teammate through a professional messaging surface
+
+Deliverables:
+- Slack app and bot integration
+- inbound message handling for DMs, mentions, and threads
+- message/session persistence tied to the shared Authrix workspace
+- one product-facing Authrix bot with visible internal agent identity labels
+- control-tower visibility into message-driven agent runs
+
+Definition of done:
+- a startup operator can message Authrix in Slack
+- Authrix can route the message into the product backend
+- the resulting agent run appears in the control tower
+- replies visibly indicate which specialized agent handled the task
+
+Status:
+- not started
+
+### Phase 11: Ollama Cloud Provider Layer and Model-Routed Agent Execution
+
+Goal:
+- replace deterministic local agent execution with real LLM-backed multi-agent behavior
+
+Deliverables:
+- Ollama Cloud provider adapter
+- secure API key configuration and backend-only model access
+- centralized per-agent model registry
+- lightweight request classifier/router
+- runtime-backed agent execution that calls real models through the provider layer
+- cost-aware routing policy for premium vs faster/cheaper models
+
+Definition of done:
+- Engineer, Docs, Workflow, and DevOps can each execute through real LLM calls
+- each agent has an explicit default model
+- routing decisions are visible and explainable
+- the system can classify simple vs complex work before spending on stronger models
+
+Status:
+- not started
+
+### Phase 12: Delegation, Scheduled Work, and Chat-Native Operations
+
+Goal:
+- make Authrix behave like a true always-on operational team rather than only a request/response dashboard
+
+Deliverables:
+- optional sub-agent delegation for specialized tasks
+- scheduled Slack-facing reports and proactive check-ins
+- chat-native task dispatch and follow-up flows
+- persisted multi-agent conversation and delegation history
+- control-tower views for chat activity, delegation chains, and model spend
+
+Definition of done:
+- Authrix can proactively deliver useful operational updates in Slack
+- agent delegation is visible, bounded, and auditable
+- chat is a first-class operating surface alongside the control tower
+
 Status:
 - not started
 
@@ -572,5 +761,14 @@ Current status under the corrected product interpretation:
 - Phase 8: complete
 - Phase 9A: complete
 - Phase 9B: not started
+- Phase 10: not started
+- Phase 11: not started
+- Phase 12: not started
 
 Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation with baseline deployment guardrails, a real worker-box bring-up path, and broader operational depth through persisted drift detection, stronger autonomy recommendations, and richer cross-surface workflow and ops coverage. The reused runtime lineage remains internal to the product rather than exposed as a separate dependency narrative.
+
+The next implementation track is now clear:
+- Slack as the first professional chat interface
+- Ollama Cloud as the first real hosted model layer
+- role-based multi-agent execution with per-agent default models
+- one shared Authrix workspace and control tower over all agent work
