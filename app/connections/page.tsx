@@ -18,6 +18,10 @@ import { getSecurityPosture } from "@/lib/security/status";
 import { SecurityPostureCard } from "@/components/dashboard/security-posture-card";
 import { listSecurityEvents } from "@/lib/security/events";
 import { SecurityEventsCard } from "@/components/dashboard/security-events-card";
+import { OperatorOnboardingCard } from "@/components/dashboard/operator-onboarding-card";
+import { SlackSetupCard } from "@/components/dashboard/slack-setup-card";
+import { ModelLayerCard } from "@/components/dashboard/model-layer-card";
+import { getModelLayerStatus } from "@/lib/models/provider";
 
 export default async function ConnectionsPage() {
   await requireSession("/connections");
@@ -29,6 +33,7 @@ export default async function ConnectionsPage() {
     securityEvents,
     readinessReport,
     smokeReport,
+    modelLayerStatus,
   ] = await Promise.all([
     getWorkspaceSnapshot(),
     getRuntimeBridge().getStatus(),
@@ -36,6 +41,7 @@ export default async function ConnectionsPage() {
     listSecurityEvents(6),
     getDeploymentReadinessReport(),
     runDeploymentSmokeTest(),
+    Promise.resolve(getModelLayerStatus()),
   ]);
   const integrations = snapshot.integrations;
   const githubConnectionName = getGitHubConnectionName();
@@ -47,12 +53,15 @@ export default async function ConnectionsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Connections"
-        description="Manage external systems that Authrix can observe or act on through a mediated backend layer."
+        description="Manage delegated access, runtime posture, and the bring-up path that turns Authrix into a real startup worker system."
       />
 
+      <OperatorOnboardingCard report={readinessReport} />
       <SecurityPostureCard posture={securityPosture} />
       <DeploymentReadinessCard report={readinessReport} />
       <DeploymentSmokeTestCard report={smokeReport} />
+      <SlackSetupCard />
+      <ModelLayerCard status={modelLayerStatus} />
 
       <CardShell
         title="Autonomous Runtime"
@@ -156,7 +165,7 @@ export default async function ConnectionsPage() {
 
       <CardShell
         title="Integration Status"
-        description="Agents never hold raw credentials. All third-party access is routed through controlled backend adapters."
+        description="Agents never hold raw credentials. All third-party access and professional messaging surfaces are routed through controlled backend adapters."
       >
         {integrations.length === 0 ? (
           <EmptyState

@@ -1,20 +1,25 @@
 import { ActivityTimelineCard } from "@/components/dashboard/activity-timeline-card";
+import { DelegationHistoryCard } from "@/components/dashboard/delegation-history-card";
 import { DecisionLogCard } from "@/components/dashboard/decision-log-card";
 import { MeetingArtifactsCard } from "@/components/dashboard/meeting-artifacts-card";
 import { RiskAlertsCard } from "@/components/dashboard/risk-alerts-card";
+import { ScheduledBriefingsCard } from "@/components/dashboard/scheduled-briefings-card";
 import { SecurityEventsCard } from "@/components/dashboard/security-events-card";
+import { SlackMessageHistoryCard } from "@/components/dashboard/slack-message-history-card";
 import { SourceDocumentsCard } from "@/components/dashboard/source-documents-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 import { listSecurityEvents } from "@/lib/security/events";
+import { loadSlackWorkspaceState } from "@/lib/slack/store";
 
 export default async function ActivityPage() {
   await requireSession("/activity");
 
-  const [snapshot, securityEvents] = await Promise.all([
+  const [snapshot, securityEvents, slackState] = await Promise.all([
     getWorkspaceSnapshot(),
     listSecurityEvents(10),
+    loadSlackWorkspaceState(),
   ]);
   const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
 
@@ -36,6 +41,14 @@ export default async function ActivityPage() {
           description="Docs drift, recurring open questions, and stalled approvals are surfaced here."
         />
       </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <DelegationHistoryCard delegations={slackState.delegations} />
+        <ScheduledBriefingsCard
+          schedules={slackState.briefingSchedules}
+          briefings={slackState.briefings}
+        />
+      </div>
+      <SlackMessageHistoryCard messages={slackState.messages} />
       <SecurityEventsCard events={securityEvents} limit={10} />
       <ActivityTimelineCard entries={snapshot.timeline} />
     </div>

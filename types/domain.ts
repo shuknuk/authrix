@@ -287,7 +287,7 @@ export interface AgentRunRecord {
   completedAt?: string;
   inputSummary: string;
   outputSummary: string;
-  provider?: "local" | "runtime";
+  provider?: "local" | "runtime" | "model";
   runtimeSessionId?: string;
   fallbackReason?: string;
   relatedRecordIds: string[];
@@ -316,6 +316,7 @@ export interface IntegrationStatus {
 export type WorkspacePipelineProvider =
   | "github"
   | "local"
+  | "model"
   | "runtime"
   | "mock";
 

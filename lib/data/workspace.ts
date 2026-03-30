@@ -5,6 +5,9 @@ import {
   buildOperationalDriftAlerts,
 } from "@/lib/data/drift-detection";
 import { runEngineerPipeline } from "@/lib/data/engineer-pipeline";
+import { runModelDevopsAgent } from "@/lib/models/agent-execution";
+import { getModelProvider } from "@/lib/models/provider";
+import { getDefaultModelForAgent } from "@/lib/models/registry";
 import { runTaskPipeline } from "@/lib/data/task-pipeline";
 import { runWorkflowPipeline } from "@/lib/data/workflow-pipeline";
 import {
@@ -19,6 +22,7 @@ import { normalizeGitHubEvents } from "@/lib/mock/github-activity";
 import { mockIntegrations } from "@/lib/mock/integrations";
 import { mockMeetingDocuments } from "@/lib/mock/meeting-documents";
 import { getNotionIntegrationStatus } from "@/lib/notion/service";
+import { getSlackIntegrationStatus } from "@/lib/slack/service";
 import type {
   AgentRunRecord,
   ApprovalRequest,
@@ -52,7 +56,7 @@ const SUMMARY_PERIOD = {
 };
 
 type LocalExecution<T> = AgentRunResult<T> & {
-  provider: "local";
+  provider: "local" | "model";
   fallbackReason?: string;
   sessionId?: string;
 };
@@ -498,7 +502,7 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   decisionRecords = linkDecisionsToTasks(decisionRecords, meetingArtifacts, tasks);
 
   const persistedCostReport = existingSnapshot?.costReport;
-  const devopsRun = executeDevopsAgent(persistedCostReport);
+  const devopsRun = await executeDevopsAgent(persistedCostReport);
   const baseRiskAlerts = sortRiskAlerts([
     ...buildEngineeringRiskAlerts(engineerRun.output.summary),
     ...workflowRun.output.alerts,
@@ -549,6 +553,7 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
     docsRuns,
     taskPipeline: taskRun.pipelineStatus,
     workflowPipeline: workflowRun.pipelineStatus,
+    devopsProvider: devopsRun.provider,
     hasPersistedDocuments: Boolean(existingSnapshot?.sourceDocuments.length),
     hasPersistedCostReport: Boolean(
       existingSnapshot?.costReport && existingSnapshot.costReport.breakdown.length > 0
@@ -636,13 +641,15 @@ function buildIntegrationStatuses(
     (integration) =>
       integration.service !== "GitHub" &&
       integration.service !== "Auth0" &&
-      integration.service !== "Notion"
+      integration.service !== "Notion" &&
+      integration.service !== "Slack"
   );
 
   return [
     getAuth0IntegrationStatus(),
     githubIntegration,
     getNotionIntegrationStatus(),
+    getSlackIntegrationStatus(),
     ...baseIntegrations,
   ];
 }
@@ -702,7 +709,41 @@ async function executeWorkflowAgent(
   });
 }
 
-function executeDevopsAgent(existingReport?: CostReport): LocalExecution<{ report: CostReport }> {
+async function executeDevopsAgent(
+  existingReport?: CostReport
+): Promise<LocalExecution<{ report: CostReport }>> {
+  const modelProvider = getModelProvider();
+  const model = getDefaultModelForAgent("devops");
+
+  if (modelProvider.configured) {
+    try {
+      const start = Date.now();
+      const output = await runModelDevopsAgent(
+        {
+          costBreakdown: existingReport?.breakdown ?? mockCostBreakdown,
+          anomalies: existingReport?.anomalies ?? mockCostAnomalies,
+          period: existingReport?.period ?? mockCostTotals.period,
+          totalSpend: existingReport?.totalSpend ?? mockCostTotals.totalSpend,
+          currency: existingReport?.currency ?? mockCostTotals.currency,
+        },
+        model
+      );
+
+      return {
+        agentId: "devops",
+        output,
+        executionTimeMs: Date.now() - start,
+        timestamp: output.report.generatedAt,
+        provider: "model",
+        fallbackReason: existingReport
+          ? "Hosted model summarized the persisted cost report."
+          : "Hosted model summarized the bundled fallback cost dataset until live billing or manual cost inputs are provided.",
+      };
+    } catch {
+      // Honest fallback to the typed local path below.
+    }
+  }
+
   if (existingReport && existingReport.breakdown.length > 0) {
     return {
       agentId: "devops",
@@ -739,6 +780,7 @@ function buildPipelineStatuses(input: {
   docsRuns: DocsPipelineExecution[];
   taskPipeline: WorkspacePipelineStatus;
   workflowPipeline: WorkspacePipelineStatus;
+  devopsProvider: "local" | "model";
   hasPersistedDocuments: boolean;
   hasPersistedCostReport: boolean;
   driftAlertCount: number;
@@ -783,10 +825,12 @@ function buildPipelineStatuses(input: {
     {
       id: "devops-signals",
       label: "DevOps signals",
-      provider: input.hasPersistedCostReport ? "local" : "mock",
+      provider: input.hasPersistedCostReport ? input.devopsProvider : "mock",
       health: input.hasPersistedCostReport ? "ready" : "fallback",
       message: input.hasPersistedCostReport
-        ? "DevOps signals are using a persisted cost report."
+        ? input.devopsProvider === "model"
+          ? "DevOps signals are using the live model layer over a persisted cost report."
+          : "DevOps signals are using the local typed pipeline over a persisted cost report."
         : "DevOps signals are still using the bundled fallback dataset until a cost report is persisted.",
       updatedAt: input.refreshedAt,
     },
@@ -804,16 +848,19 @@ function buildDocsProcessingPipelineStatus(
       .sort((left, right) => new Date(right).getTime() - new Date(left).getTime())[0] ??
     refreshedAt;
   const allRuntime = runs.length > 0 && runs.every((run) => run.provider === "runtime");
+  const allModel = runs.length > 0 && runs.every((run) => run.provider === "model");
   const hadFallback = runs.some((run) => Boolean(run.fallbackReason));
 
   if (!hasPersistedDocuments) {
     return {
       id: "docs-processing",
       label: "Docs processing",
-      provider: allRuntime ? "runtime" : "local",
+      provider: allRuntime ? "runtime" : allModel ? "model" : "local",
       health: "fallback",
       message: allRuntime
         ? "Docs processing ran through the runtime, but it is still using bundled fallback meeting documents until real records are persisted."
+        : allModel
+          ? "Docs processing ran through the hosted model layer, but it is still using bundled fallback meeting documents until real records are persisted."
         : "Docs processing is using bundled fallback meeting documents until real records are persisted.",
       updatedAt: latestTimestamp,
     };
@@ -837,6 +884,17 @@ function buildDocsProcessingPipelineStatus(
       provider: "runtime",
       health: "ready",
       message: "Docs processing ran through the live runtime using persisted source documents.",
+      updatedAt: latestTimestamp,
+    };
+  }
+
+  if (allModel) {
+    return {
+      id: "docs-processing",
+      label: "Docs processing",
+      provider: "model",
+      health: "ready",
+      message: "Docs processing ran through the hosted model layer using persisted source documents.",
       updatedAt: latestTimestamp,
     };
   }

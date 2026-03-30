@@ -1,15 +1,16 @@
 import { taskAgent } from "@/lib/agents";
+import { getDefaultModelForAgent } from "@/lib/models/registry";
 import { getRuntimeBridge } from "@/lib/runtime/bridge";
 import type { TaskAgentInput, TaskAgentOutput } from "@/types/agents";
 import type { WorkspacePipelineStatus } from "@/types/domain";
 
-type TaskExecutionMode = "auto" | "local" | "runtime";
+type TaskExecutionMode = "auto" | "local" | "model" | "runtime";
 
 export interface TaskPipelineExecution {
   output: TaskAgentOutput;
   executionTimeMs: number;
   timestamp: string;
-  provider: "local" | "runtime";
+  provider: "local" | "model" | "runtime";
   sessionId?: string;
   fallbackReason?: string;
   pipelineStatus: WorkspacePipelineStatus;
@@ -54,6 +55,7 @@ export async function runTaskPipeline(
     const session = await bridge.createSession({
       agentId: "task",
       label: "Authrix Task Suggestions",
+      model: getDefaultModelForAgent("workflow"),
     });
 
     const result = await bridge.executeAgent<TaskAgentInput, TaskAgentOutput>({
@@ -116,6 +118,10 @@ function resolveTaskExecutionMode(): TaskExecutionMode {
 
   if (raw === "runtime") {
     return "runtime";
+  }
+
+  if (raw === "model") {
+    return "model";
   }
 
   if (raw === "local") {

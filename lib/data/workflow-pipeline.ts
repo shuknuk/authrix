@@ -1,15 +1,18 @@
 import { workflowAgent } from "@/lib/agents";
+import { runModelWorkflowAgent } from "@/lib/models/agent-execution";
+import { getModelProvider } from "@/lib/models/provider";
+import { getDefaultModelForAgent } from "@/lib/models/registry";
 import { getRuntimeBridge } from "@/lib/runtime/bridge";
 import type { WorkflowAgentInput, WorkflowAgentOutput } from "@/types/agents";
 import type { WorkspacePipelineStatus } from "@/types/domain";
 
-type WorkflowExecutionMode = "auto" | "local" | "runtime";
+type WorkflowExecutionMode = "auto" | "local" | "model" | "runtime";
 
 export interface WorkflowPipelineExecution {
   output: WorkflowAgentOutput;
   executionTimeMs: number;
   timestamp: string;
-  provider: "local" | "runtime";
+  provider: "local" | "model" | "runtime";
   sessionId?: string;
   fallbackReason?: string;
   pipelineStatus: WorkspacePipelineStatus;
@@ -20,12 +23,57 @@ export async function runWorkflowPipeline(
 ): Promise<WorkflowPipelineExecution> {
   const bridge = getRuntimeBridge();
   const runtimeStatus = await bridge.getStatus();
+  const modelProvider = getModelProvider();
+  const model = getDefaultModelForAgent("workflow");
   const executionMode = resolveWorkflowExecutionMode();
   const shouldTryRuntime =
     executionMode === "runtime" ||
     (executionMode === "auto" &&
       bridge.provider === "openclaw" &&
       runtimeStatus.healthy);
+  const shouldTryModel =
+    executionMode === "model" ||
+    (executionMode === "auto" && !shouldTryRuntime && modelProvider.configured);
+
+  if (shouldTryModel) {
+    try {
+      const start = Date.now();
+      const output = await runModelWorkflowAgent(input, model);
+      const timestamp = new Date().toISOString();
+      return {
+        output,
+        executionTimeMs: Date.now() - start,
+        timestamp,
+        provider: "model",
+        pipelineStatus: {
+          id: "workflow-follow-through",
+          label: "Workflow follow-through",
+          provider: "model",
+          health: "ready",
+          message: `Workflow follow-through was executed through the hosted model layer using ${model}.`,
+          updatedAt: timestamp,
+        },
+      };
+    } catch (error) {
+      if (executionMode === "model") {
+        const localExecution = runLocalWorkflowPipeline(input);
+        return {
+          ...localExecution,
+          fallbackReason: toErrorMessage(error),
+          pipelineStatus: {
+            id: "workflow-follow-through",
+            label: "Workflow follow-through",
+            provider: "local",
+            health: "fallback",
+            message: `Model execution failed, so Authrix used the local workflow pipeline. ${toErrorMessage(
+              error
+            )}`,
+            updatedAt: localExecution.timestamp,
+          },
+        };
+      }
+    }
+  }
 
   if (!shouldTryRuntime) {
     const localExecution = runLocalWorkflowPipeline(input);
@@ -54,6 +102,7 @@ export async function runWorkflowPipeline(
     const session = await bridge.createSession({
       agentId: "workflow",
       label: "Authrix Workflow Follow-Through",
+      model: getDefaultModelForAgent("workflow"),
     });
 
     const result = await bridge.executeAgent<WorkflowAgentInput, WorkflowAgentOutput>({
@@ -116,6 +165,10 @@ function resolveWorkflowExecutionMode(): WorkflowExecutionMode {
 
   if (raw === "runtime") {
     return "runtime";
+  }
+
+  if (raw === "model") {
+    return "model";
   }
 
   if (raw === "local") {

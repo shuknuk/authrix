@@ -1,14 +1,17 @@
 import { docsAgent } from "@/lib/agents";
+import { runModelDocsAgent } from "@/lib/models/agent-execution";
+import { getModelProvider } from "@/lib/models/provider";
+import { getDefaultModelForAgent } from "@/lib/models/registry";
 import { getRuntimeBridge } from "@/lib/runtime/bridge";
 import type { DocsAgentInput, DocsAgentOutput } from "@/types/agents";
 
-type DocsExecutionMode = "auto" | "local" | "runtime";
+type DocsExecutionMode = "auto" | "local" | "model" | "runtime";
 
 export interface DocsPipelineExecution {
   output: DocsAgentOutput;
   executionTimeMs: number;
   timestamp: string;
-  provider: "local" | "runtime";
+  provider: "local" | "model" | "runtime";
   sessionId?: string;
   fallbackReason?: string;
 }
@@ -18,12 +21,38 @@ export async function runDocsPipeline(
 ): Promise<DocsPipelineExecution> {
   const bridge = getRuntimeBridge();
   const runtimeStatus = await bridge.getStatus();
+  const modelProvider = getModelProvider();
+  const model = getDefaultModelForAgent("docs");
   const executionMode = resolveDocsExecutionMode();
   const shouldTryRuntime =
     executionMode === "runtime" ||
     (executionMode === "auto" &&
       bridge.provider === "openclaw" &&
       runtimeStatus.healthy);
+  const shouldTryModel =
+    executionMode === "model" ||
+    (executionMode === "auto" && !shouldTryRuntime && modelProvider.configured);
+
+  if (shouldTryModel) {
+    try {
+      const start = Date.now();
+      const output = await runModelDocsAgent(input, model);
+      return {
+        output,
+        executionTimeMs: Date.now() - start,
+        timestamp: new Date().toISOString(),
+        provider: "model",
+      };
+    } catch (error) {
+      if (executionMode === "model") {
+        const localExecution = runLocalDocsPipeline(input);
+        return {
+          ...localExecution,
+          fallbackReason: toErrorMessage(error),
+        };
+      }
+    }
+  }
 
   if (!shouldTryRuntime) {
     const localExecution = runLocalDocsPipeline(input);
@@ -40,6 +69,7 @@ export async function runDocsPipeline(
     const session = await bridge.createSession({
       agentId: "docs",
       label: `Authrix Docs Processing: ${input.sourceDocument.title}`,
+      model: getDefaultModelForAgent("docs"),
     });
 
     const result = await bridge.executeAgent<DocsAgentInput, DocsAgentOutput>({
@@ -84,6 +114,10 @@ function resolveDocsExecutionMode(): DocsExecutionMode {
 
   if (raw === "runtime") {
     return "runtime";
+  }
+
+  if (raw === "model") {
+    return "model";
   }
 
   if (raw === "local") {

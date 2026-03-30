@@ -75,7 +75,11 @@ export function createMockBridge(): RuntimeBridge {
         label: config.label,
         createdAt: new Date().toISOString(),
         lastActiveAt: new Date().toISOString(),
-        metadata: config.metadata ?? {},
+        metadata: {
+          ...(config.metadata ?? {}),
+          model: config.model,
+          agentId: config.agentId,
+        },
       };
       sessions.set(id, session);
       return session;

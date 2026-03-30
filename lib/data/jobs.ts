@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { refreshWorkspaceSnapshot } from "@/lib/data/workspace";
 import { AUTHRIX_DATA_DIR, resolveAuthrixDataPath } from "@/lib/security/paths";
+import { runScheduledSlackBriefing } from "@/lib/slack/briefings";
 import type { JobStatus } from "@/types/runtime";
 
 const DATA_DIR = AUTHRIX_DATA_DIR;
@@ -38,6 +39,25 @@ export async function submitWorkspaceRefreshJob(): Promise<JobStatus> {
   return cloneJob(job);
 }
 
+export async function submitSlackBriefingJob(scheduleId?: string): Promise<JobStatus> {
+  const createdAt = new Date().toISOString();
+  const job: JobStatus = {
+    id: `job-slack-briefing-${Date.now()}`,
+    state: "queued",
+    createdAt,
+    result: {
+      type: "slack.briefing.run",
+      scheduleId,
+    },
+  };
+
+  const jobs = await loadJobs();
+  await saveJobs([job, ...jobs].slice(0, 50));
+  void runSlackBriefingJob(job.id, scheduleId);
+
+  return cloneJob(job);
+}
+
 async function runWorkspaceRefreshJob(jobId: string): Promise<void> {
   await updateJob(jobId, (job) => ({
     ...job,
@@ -63,6 +83,37 @@ async function runWorkspaceRefreshJob(jobId: string): Promise<void> {
       state: "failed",
       completedAt: new Date().toISOString(),
       error: error instanceof Error ? error.message : "Unknown refresh error.",
+    }));
+  }
+}
+
+async function runSlackBriefingJob(jobId: string, scheduleId?: string): Promise<void> {
+  await updateJob(jobId, (job) => ({
+    ...job,
+    state: "running",
+    startedAt: new Date().toISOString(),
+  }));
+
+  try {
+    const briefing = await runScheduledSlackBriefing(scheduleId);
+    await updateJob(jobId, (job) => ({
+      ...job,
+      state: "completed",
+      completedAt: new Date().toISOString(),
+      result: {
+        type: "slack.briefing.run",
+        scheduleId: briefing.schedule.id,
+        deliveryStatus: briefing.record.deliveryStatus,
+        targetChannelId: briefing.record.targetChannelId,
+        deliveredAt: briefing.record.deliveredAt,
+      },
+    }));
+  } catch (error) {
+    await updateJob(jobId, (job) => ({
+      ...job,
+      state: "failed",
+      completedAt: new Date().toISOString(),
+      error: error instanceof Error ? error.message : "Unknown Slack briefing error.",
     }));
   }
 }
