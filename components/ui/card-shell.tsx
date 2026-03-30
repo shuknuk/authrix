@@ -14,17 +14,19 @@ export function CardShell({
   children,
 }: CardShellProps) {
   return (
-    <section className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6 shadow-[0_18px_40px_rgba(0,0,0,0.22)]">
-      <div className="mb-4 flex items-start justify-between gap-3">
+    <section className="relative overflow-hidden rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.82),rgba(7,11,20,0.92))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.38)] backdrop-blur-xl">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/40 to-transparent" />
+      <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-cyan-300/8 blur-3xl" />
+      <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-medium text-zinc-100">{title}</h3>
+          <h3 className="text-sm font-semibold tracking-[0.02em] text-zinc-50">{title}</h3>
           {description ? (
-            <p className="mt-1 text-xs leading-5 text-zinc-500">{description}</p>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-400">{description}</p>
           ) : null}
         </div>
         {badge}
       </div>
-      {children}
+      <div className="relative">{children}</div>
     </section>
   );
 }

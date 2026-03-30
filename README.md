@@ -235,6 +235,20 @@ Phase 7 adds operator-facing bring-up APIs:
 - `GET /api/deployment/smoke-test`
   Runs non-destructive deployment smoke checks over persisted state, runtime status, security posture, and job surfaces.
 
+## Operational Drift
+
+Phase 8 now includes persisted drift detection and drift-backed autonomy suggestions.
+
+Authrix now surfaces drift signals when:
+- engineering activity outpaces persisted docs input
+- accepted decisions are missing follow-through tasks
+- open questions keep recurring across meetings
+- the execution backlog grows faster than work is being cleared
+- cost anomalies appear without matching visible product activity
+- approvals stay pending long enough to slow execution
+
+These drift signals flow through the same shared workspace snapshot, pipeline state, alert surfaces, and proposed-action pipeline as the rest of the product.
+
 ## Approval-Backed GitHub Writes
 
 Approved `github.issue.create` actions can now execute through a real mediated backend adapter.

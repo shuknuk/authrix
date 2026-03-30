@@ -28,11 +28,11 @@ export function CostRiskCard({
         </span>
       }
     >
-      <div className="mb-5 flex items-end gap-3">
+      <div className="mb-5 flex items-end gap-3 rounded-[1.4rem] border border-white/8 bg-white/5 px-4 py-4">
         <span className="text-3xl font-semibold text-zinc-50">
           ${report.totalSpend.toFixed(2)}
         </span>
-        <span className="text-xs uppercase tracking-wide text-zinc-500">
+        <span className="text-xs uppercase tracking-wide text-slate-500">
           {report.currency} this week
         </span>
       </div>
@@ -47,9 +47,9 @@ export function CostRiskCard({
           {report.breakdown.map((item) => (
             <div
               key={item.service}
-              className="flex items-center justify-between rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3 text-sm"
+              className="flex items-center justify-between rounded-[1.2rem] border border-white/8 bg-slate-950/45 px-4 py-3 text-sm"
             >
-              <span className="text-zinc-300">{item.service}</span>
+              <span className="text-zinc-200">{item.service}</span>
               <div className="flex items-center gap-3">
                 <span
                   className={`text-xs ${
@@ -74,7 +74,7 @@ export function CostRiskCard({
 
       {!compact ? (
         <div className="mt-5">
-          <p className="text-sm leading-6 text-zinc-400">{report.summary}</p>
+          <p className="text-sm leading-6 text-slate-300/90">{report.summary}</p>
           {report.anomalies.length > 0 ? (
             <div className="mt-4 space-y-3">
               {report.anomalies.map((anomaly) => (
