@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getOptionalSession } from "@/lib/auth/session";
 import { isAuthConfigured } from "@/lib/auth/auth0";
-import { listWorkspaceJobs, submitWorkspaceRefreshJob } from "@/lib/data/jobs";
+import {
+  listWorkspaceJobs,
+  submitSlackBriefingJob,
+  submitWorkspaceRefreshJob,
+} from "@/lib/data/jobs";
 
 export async function GET() {
   if (isAuthConfigured) {
@@ -15,7 +19,7 @@ export async function GET() {
   return NextResponse.json({ jobs });
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   if (isAuthConfigured) {
     const session = await getOptionalSession();
     if (!session) {
@@ -23,6 +27,15 @@ export async function POST() {
     }
   }
 
-  const job = await submitWorkspaceRefreshJob();
+  const payload = (await request.json().catch(() => ({}))) as {
+    type?: "workspace.refresh" | "slack.briefing.run";
+    scheduleId?: string;
+  };
+
+  const job =
+    payload.type === "slack.briefing.run"
+      ? await submitSlackBriefingJob(payload.scheduleId)
+      : await submitWorkspaceRefreshJob();
+
   return NextResponse.json({ job }, { status: 202 });
 }

@@ -79,7 +79,7 @@ npm.cmd run smoke:worker-box
    - Allowed Callback URLs: `http://localhost:3000/auth/callback`
    - Allowed Logout URLs: `http://localhost:3000`
    - Allowed Web Origins: `http://localhost:3000`
-   - Application Login URI: `http://localhost:3000/auth/login`
+   - Application Login URI: leave blank for local `http://localhost` development unless you have an HTTPS login URL
 
 Authrix uses a `Regular Web App` in Auth0 and keeps delegated third-party access on the backend.
 
@@ -103,6 +103,88 @@ Authrix now supports a real GitHub ingestion path with clean fallbacks.
 7. Optional: set `AUTHRIX_ALLOW_TOKEN_VAULT_GITHUB_ACCESS_TOKEN_OVERRIDE=true` if you want the manual Token Vault override env to be usable.
 
 If no live GitHub configuration is present, Authrix stays in mock mode and labels that clearly in the Connections page. When Auth0 is configured, the Connections page exposes a `Connect GitHub With Auth0` action that uses the SDK's built-in `/auth/connect` flow.
+
+## Slack Messaging Setup
+
+Phase 10 introduces Slack as Authrix's first professional messaging surface.
+
+Add these values to `.env.local` when you are ready to connect Slack:
+- `SLACK_SIGNING_SECRET`
+- `SLACK_BOT_TOKEN`
+- `SLACK_APP_TOKEN`
+- `SLACK_WORKSPACE_ID`
+- `SLACK_BOT_USER_ID`
+- `SLACK_DEFAULT_CHANNEL_ID` for proactive briefings
+
+Current route:
+- `POST /api/slack/events`
+- `GET/POST /api/slack/briefings`
+
+What the current messaging layer does:
+- verifies inbound Slack requests with the signing secret
+- handles Slack URL verification
+- records routed conversations and messages in `.authrix-data/slack-state.json`
+- routes each message to an internal Authrix specialist through deterministic or model-backed routing
+- records the dispatch in the control tower timeline and agent-run history
+- records lightweight delegation chains when a request spans multiple specialists
+- captures chat-native follow-up tasks before they drift into side conversations
+- persists scheduled briefing definitions and generated Slack briefing history
+- exposes authenticated Slack state through `GET /api/slack/state`
+- surfaces Slack onboarding, routed conversations, delegation history, briefings, and recent message history in the control tower
+
+What it does not do yet:
+- full Slack OAuth installation flow
+- rich Slack commands
+- threaded agent-specific command syntax
+- full autonomous scheduling beyond the current persisted briefing/job path
+
+## Ollama Cloud and Model Routing
+
+Phase 11 introduces the first real hosted model layer for Authrix.
+
+Add these values to `.env.local` when you are ready to connect Ollama Cloud:
+- `AUTHRIX_MODEL_PROVIDER=ollama-cloud`
+- `OLLAMA_API_KEY`
+- optional: `OLLAMA_BASE_URL` (defaults to `https://ollama.com/api`)
+
+Per-agent model defaults now live in environment-backed registry settings:
+- `AUTHRIX_MODEL_ENGINEER`
+- `AUTHRIX_MODEL_DOCS`
+- `AUTHRIX_MODEL_WORKFLOW`
+- `AUTHRIX_MODEL_DEVOPS`
+- `AUTHRIX_MODEL_ROUTER`
+
+Routing mode:
+- `AUTHRIX_ROUTER_EXECUTION=local`
+  Always use deterministic keyword routing.
+- `AUTHRIX_ROUTER_EXECUTION=auto`
+  Try model-based routing when the provider is configured, otherwise fall back honestly.
+- `AUTHRIX_ROUTER_EXECUTION=model`
+  Prefer model-based routing and still fall back if the provider call fails.
+
+What the current Phase 11 slice does:
+- adds a clean provider adapter boundary for hosted model calls
+- adds an Ollama Cloud chat adapter
+- centralizes per-agent default models in one registry
+- wires model defaults into runtime session creation for Engineer, Docs, Workflow, and Task flows
+- lets Engineer, Docs, Workflow, and DevOps prefer hosted-model execution in `auto` or `model` mode
+- upgrades Slack request routing to use model classification when configured
+- exposes model-layer posture in the control tower
+
+What it does not do yet:
+- add full prompt/version management for each agent
+- add exact token and dollar metering dashboards for model spend
+- add deep autonomous sub-agent execution chains beyond the current lightweight delegation layer
+
+Execution modes now support:
+- `AUTHRIX_ENGINEER_EXECUTION=auto|local|model|runtime`
+- `AUTHRIX_DOCS_EXECUTION=auto|local|model|runtime`
+- `AUTHRIX_WORKFLOW_EXECUTION=auto|local|model|runtime`
+
+In `auto` mode, Authrix will:
+- prefer the live runtime when available
+- otherwise use the hosted model layer when configured
+- otherwise fall back honestly to the local typed pipeline
 
 ## Runtime Foundation
 
@@ -215,7 +297,7 @@ These routes rebuild the shared workspace snapshot after writing the new source 
 Authrix now exposes a persisted refresh job path:
 
 - `POST /api/workspace/jobs`
-  Queue a workspace refresh job
+  Queue a workspace refresh job or a Slack briefing job
 
 - `GET /api/workspace/jobs`
   List recent refresh jobs
@@ -224,6 +306,23 @@ Authrix now exposes a persisted refresh job path:
   Inspect one refresh job
 
 This is the first real job surface for the control tower and is separate from the direct `/api/workspace/state` refresh path.
+
+Slack briefing jobs use:
+- `POST /api/workspace/jobs` with `{ "type": "slack.briefing.run", "scheduleId": "briefing-daily-ops" }`
+
+## Chat-Native Operations
+
+Phase 12 turns Slack into a more operational surface instead of a simple inbox.
+
+Authrix now supports:
+- persisted delegation history between internal specialists
+- scheduled briefing definitions for daily and weekly proactive updates
+- generated and delivered Slack briefing records
+- chat-native follow-up capture that feeds the control tower
+- model-routed chat workload visibility as a spend proxy
+
+Current note:
+- direct model spend metering is not wired yet, so the dashboard shows routed model activity rather than exact billing totals
 
 ## Deployment APIs
 
