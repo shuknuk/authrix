@@ -1,5 +1,9 @@
 import { devopsAgent } from "@/lib/agents";
 import { runDocsPipeline, type DocsPipelineExecution } from "@/lib/data/docs-pipeline";
+import {
+  buildApprovalDriftAlerts,
+  buildOperationalDriftAlerts,
+} from "@/lib/data/drift-detection";
 import { runEngineerPipeline } from "@/lib/data/engineer-pipeline";
 import { runTaskPipeline } from "@/lib/data/task-pipeline";
 import { runWorkflowPipeline } from "@/lib/data/workflow-pipeline";
@@ -495,19 +499,39 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
 
   const persistedCostReport = existingSnapshot?.costReport;
   const devopsRun = executeDevopsAgent(persistedCostReport);
-  const riskAlerts = sortRiskAlerts([
+  const baseRiskAlerts = sortRiskAlerts([
     ...buildEngineeringRiskAlerts(engineerRun.output.summary),
     ...workflowRun.output.alerts,
     ...buildOperationsRiskAlerts(devopsRun.output.report),
   ]);
+  const operationalDriftAlerts = buildOperationalDriftAlerts({
+    workspaceId: WORKSPACE_ID,
+    generatedAt: refreshedAt,
+    engineeringActivities,
+    sourceDocuments,
+    meetingArtifacts,
+    decisionRecords,
+    costReport: devopsRun.output.report,
+    tasks,
+  });
 
   const proposedActions = buildProposedActions(
     tasks,
     decisionRecords,
-    riskAlerts,
+    [...baseRiskAlerts, ...operationalDriftAlerts],
     meetingArtifacts
   );
   const approvalRequests = buildApprovalRequests(proposedActions);
+  const approvalDriftAlerts = buildApprovalDriftAlerts({
+    workspaceId: WORKSPACE_ID,
+    generatedAt: refreshedAt,
+    approvalRequests,
+  });
+  const riskAlerts = sortRiskAlerts([
+    ...baseRiskAlerts,
+    ...operationalDriftAlerts,
+    ...approvalDriftAlerts,
+  ]);
 
   for (const action of proposedActions) {
     const approval = approvalRequests.find(
@@ -529,6 +553,7 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
     hasPersistedCostReport: Boolean(
       existingSnapshot?.costReport && existingSnapshot.costReport.breakdown.length > 0
     ),
+    driftAlertCount: operationalDriftAlerts.length + approvalDriftAlerts.length,
   });
   const agentRuns = buildAgentRuns(
     engineerRun,
@@ -716,6 +741,7 @@ function buildPipelineStatuses(input: {
   workflowPipeline: WorkspacePipelineStatus;
   hasPersistedDocuments: boolean;
   hasPersistedCostReport: boolean;
+  driftAlertCount: number;
 }): WorkspacePipelineStatus[] {
   const githubPipeline: WorkspacePipelineStatus = {
     id: "github-ingestion",
@@ -743,6 +769,17 @@ function buildPipelineStatuses(input: {
     ),
     input.taskPipeline,
     input.workflowPipeline,
+    {
+      id: "operational-drift",
+      label: "Operational drift",
+      provider: "local",
+      health: "ready",
+      message:
+        input.driftAlertCount > 0
+          ? `Detected ${input.driftAlertCount} drift signal(s) across docs, ownership, approvals, or recurring topics.`
+          : "No active operational drift signals were detected during the latest refresh.",
+      updatedAt: input.refreshedAt,
+    },
     {
       id: "devops-signals",
       label: "DevOps signals",
@@ -854,6 +891,21 @@ function buildProposedActions(
   );
   const documentationDecision = decisionRecords[0];
   const meetingArtifact = meetingArtifacts[0];
+  const documentationDriftAlert = riskAlerts.find(
+    (alert) => alert.id === "risk-drift-documentation-coverage"
+  );
+  const decisionDriftAlert = riskAlerts.find(
+    (alert) => alert.id === "risk-drift-decision-follow-through"
+  );
+  const recurringQuestionAlert = riskAlerts.find(
+    (alert) => alert.id === "risk-drift-recurring-questions"
+  );
+  const executionBacklogAlert = riskAlerts.find(
+    (alert) => alert.id === "risk-drift-execution-backlog"
+  );
+  const operationsMismatchAlert = riskAlerts.find(
+    (alert) => alert.id === "risk-drift-ops-mismatch"
+  );
 
   const actions: ProposedAction[] = [];
 
@@ -911,7 +963,92 @@ function buildProposedActions(
     });
   }
 
-  return actions;
+  if (documentationDriftAlert) {
+    actions.push({
+      id: "proposed-action-004",
+      workspaceId: WORKSPACE_ID,
+      actionKind: "docs.update",
+      title: "Refresh docs after engineering drift",
+      description:
+        "Authrix detected that engineering activity is moving faster than persisted documentation, so it is proposing a controlled docs refresh.",
+      targetSystem: "Documentation",
+      riskLevel: documentationDriftAlert.severity === "medium" ? "medium" : "low",
+      sourceAgentId: "docs",
+      status: "proposed",
+      createdAt: documentationDriftAlert.createdAt,
+      relatedRecordIds: documentationDriftAlert.relatedRecordIds,
+    });
+  }
+
+  if (decisionDriftAlert) {
+    actions.push({
+      id: "proposed-action-005",
+      workspaceId: WORKSPACE_ID,
+      actionKind: "github.issue.create",
+      title: "Create follow-up issue for accepted decisions",
+      description:
+        "Authrix found accepted decisions without linked execution tasks and wants to create a tracking issue so ownership does not drift.",
+      targetSystem: "GitHub",
+      riskLevel: decisionDriftAlert.severity,
+      sourceAgentId: "workflow",
+      status: "proposed",
+      createdAt: decisionDriftAlert.createdAt,
+      relatedRecordIds: decisionDriftAlert.relatedRecordIds,
+    });
+  }
+
+  if (recurringQuestionAlert) {
+    actions.push({
+      id: "proposed-action-006",
+      workspaceId: WORKSPACE_ID,
+      actionKind: "github.issue.create",
+      title: "Escalate recurring open questions",
+      description:
+        "Recurring open questions were detected across meetings. Authrix is proposing a tracked issue so the team can resolve them deliberately.",
+      targetSystem: "GitHub",
+      riskLevel: recurringQuestionAlert.severity,
+      sourceAgentId: "docs",
+      status: "proposed",
+      createdAt: recurringQuestionAlert.createdAt,
+      relatedRecordIds: recurringQuestionAlert.relatedRecordIds,
+    });
+  }
+
+  if (executionBacklogAlert) {
+    actions.push({
+      id: "proposed-action-007",
+      workspaceId: WORKSPACE_ID,
+      actionKind: "github.issue.create",
+      title: "Create issue to triage execution backlog",
+      description:
+        "Authrix detected a growing execution backlog and wants to create a tracked issue so the team can rebalance owners and follow-through.",
+      targetSystem: "GitHub",
+      riskLevel: executionBacklogAlert.severity,
+      sourceAgentId: "workflow",
+      status: "proposed",
+      createdAt: executionBacklogAlert.createdAt,
+      relatedRecordIds: executionBacklogAlert.relatedRecordIds,
+    });
+  }
+
+  if (operationsMismatchAlert) {
+    actions.push({
+      id: "proposed-action-008",
+      workspaceId: WORKSPACE_ID,
+      actionKind: "github.issue.create",
+      title: "Review unexplained cost drift",
+      description:
+        "Operational cost drift was detected without matching high-impact product activity, so Authrix is proposing a tracked investigation issue.",
+      targetSystem: "GitHub",
+      riskLevel: operationsMismatchAlert.severity,
+      sourceAgentId: "devops",
+      status: "proposed",
+      createdAt: operationsMismatchAlert.createdAt,
+      relatedRecordIds: operationsMismatchAlert.relatedRecordIds,
+    });
+  }
+
+  return dedupeProposedActions(actions);
 }
 
 function buildApprovalRequests(
@@ -944,6 +1081,23 @@ function buildApprovalRequests(
       };
     })
     .sort(sortByDateDesc("requestedAt"));
+}
+
+function dedupeProposedActions(actions: ProposedAction[]): ProposedAction[] {
+  const seen = new Set<string>();
+  const deduped: ProposedAction[] = [];
+
+  for (const action of actions) {
+    const key = `${action.actionKind}:${action.title.toLowerCase()}`;
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    deduped.push(action);
+  }
+
+  return deduped;
 }
 
 function linkDecisionsToTasks(

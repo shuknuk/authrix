@@ -17,8 +17,10 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className="dark">
-      <body className="bg-zinc-950 text-zinc-100 antialiased">
-        <div className="flex min-h-screen flex-col md:flex-row">
+      <body className="antialiased">
+        <div className="relative flex min-h-screen flex-col overflow-hidden md:flex-row">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(103,232,249,0.14),transparent_60%)]" />
+          <div className="pointer-events-none absolute right-0 top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(251,191,36,0.12),transparent_68%)] blur-3xl" />
           <Sidebar
             user={
               session
@@ -29,7 +31,9 @@ export default async function RootLayout({
                 : null
             }
           />
-          <main className="flex-1 p-5 md:p-8">{children}</main>
+          <main className="relative flex-1 p-4 md:p-8">
+            <div className="mx-auto max-w-[1500px]">{children}</div>
+          </main>
         </div>
       </body>
     </html>

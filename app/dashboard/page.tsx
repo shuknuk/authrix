@@ -1,6 +1,7 @@
 import { ApprovalQueueCard } from "@/components/dashboard/approval-queue-card";
 import { CostRiskCard } from "@/components/dashboard/cost-risk-card";
 import { getDeploymentReadinessReport } from "@/lib/deployment/readiness";
+import { RiskAlertsCard } from "@/components/dashboard/risk-alerts-card";
 import { SecurityPostureCard } from "@/components/dashboard/security-posture-card";
 import { SuggestedTasksCard } from "@/components/dashboard/suggested-tasks-card";
 import { WeeklySummaryCard } from "@/components/dashboard/weekly-summary-card";
@@ -22,6 +23,7 @@ export default async function DashboardPage() {
   const engineeringPipeline = snapshot.state.pipelines.find(
     (pipeline) => pipeline.id === "engineering-summary"
   );
+  const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
   const latestJob = jobs[0];
 
   return (
@@ -87,6 +89,12 @@ export default async function DashboardPage() {
         <SuggestedTasksCard tasks={snapshot.tasks} limit={5} compact />
         <CostRiskCard report={snapshot.costReport} compact />
         <ApprovalQueueCard approvals={snapshot.approvalRequests} limit={5} />
+        <RiskAlertsCard
+          alerts={driftAlerts}
+          title="Operational Drift"
+          description="Authrix watches for docs drift, stalled approvals, and recurring unresolved topics."
+          limit={3}
+        />
         <SecurityPostureCard posture={securityPosture} compact />
       </div>
     </div>

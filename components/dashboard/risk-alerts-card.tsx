@@ -6,23 +6,27 @@ interface RiskAlertsCardProps {
   alerts: RiskAlert[];
   title?: string;
   description?: string;
+  limit?: number;
 }
 
 export function RiskAlertsCard({
   alerts,
   title = "Risk Alerts",
   description = "Current risk signals detected by Authrix.",
+  limit,
 }: RiskAlertsCardProps) {
+  const visibleAlerts = typeof limit === "number" ? alerts.slice(0, limit) : alerts;
+
   return (
     <CardShell title={title} description={description}>
-      {alerts.length === 0 ? (
+      {visibleAlerts.length === 0 ? (
         <EmptyState
           title="No active alerts"
           description="Authrix has not detected any issues in this category right now."
         />
       ) : (
         <div className="space-y-3">
-          {alerts.map((alert) => (
+          {visibleAlerts.map((alert) => (
             <div
               key={alert.id}
               className={`rounded-xl border px-4 py-3 ${

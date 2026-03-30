@@ -521,18 +521,38 @@ Deliverables:
 - more complete drift detection
 
 Status:
+- complete
+
+Status:
 - not started
 
-### Phase 9: UI Polish and Presentation
+### Phase 9A: Initial UI Polish
 
 Goal:
-- improve presentation, onboarding, and visual polish after the functional product path is strong
+- deliver a cleaner, more intentional first visual pass before deeper product-specific redesign work
 
 Deliverables:
-- refined control tower UX
+- upgraded shell and navigation polish
+- stronger dashboard card presentation
+- cleaner signed-out landing experience
+- improved visual consistency across the core control-tower pages
+
+Status:
+- complete
+
+### Phase 9B: Full Product Revamp
+
+Goal:
+- rework the visual language, onboarding, and storytelling more deeply after the product is running locally and can be evaluated as a real experience
+
+Deliverables:
+- refined control tower UX based on live usage
 - improved setup guidance
 - polished onboarding and marketing surfaces
 - stronger product storytelling for demos and launch
+
+Status:
+- not started
 
 Status:
 - not started
@@ -549,5 +569,8 @@ Current status under the corrected product interpretation:
 - Phase 5: complete
 - Phase 6: complete
 - Phase 7: complete
+- Phase 8: complete
+- Phase 9A: complete
+- Phase 9B: not started
 
-Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation with baseline deployment guardrails, runtime tool policy enforcement, operator-visible security posture, and a real worker-box bring-up path. The reused runtime lineage remains internal to the product rather than exposed as a separate dependency narrative.
+Authrix now has a persistence-backed, runtime-aware, approval-capable product foundation with baseline deployment guardrails, a real worker-box bring-up path, and broader operational depth through persisted drift detection, stronger autonomy recommendations, and richer cross-surface workflow and ops coverage. The reused runtime lineage remains internal to the product rather than exposed as a separate dependency narrative.

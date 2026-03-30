@@ -183,7 +183,7 @@ export interface RiskAlert {
   title: string;
   description: string;
   severity: RiskLevel;
-  category: "engineering" | "workflow" | "operations";
+  category: "engineering" | "workflow" | "operations" | "drift";
   sourceAgentId: string;
   createdAt: string;
   relatedRecordIds: string[];

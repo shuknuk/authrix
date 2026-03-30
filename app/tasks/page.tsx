@@ -12,6 +12,7 @@ export default async function TasksPage() {
   const workflowAlerts = snapshot.riskAlerts.filter(
     (alert) => alert.category === "workflow"
   );
+  const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
 
   return (
     <div className="space-y-6">
@@ -27,6 +28,11 @@ export default async function TasksPage() {
           description="Ownership, overdue work, and follow-through signals detected by Authrix."
         />
       </div>
+      <RiskAlertsCard
+        alerts={driftAlerts}
+        title="Drift Alerts"
+        description="Cross-system drift signals where decisions, documentation, approvals, or unresolved topics are starting to slip."
+      />
       <SuggestedTasksCard tasks={snapshot.tasks} />
     </div>
   );

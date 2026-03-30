@@ -43,7 +43,7 @@ export function SuggestedTasksCard({
           {visibleTasks.map((task) => (
             <div
               key={task.id}
-              className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
+              className="rounded-[1.25rem] border border-white/8 bg-slate-950/45 px-4 py-3"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
@@ -53,30 +53,44 @@ export function SuggestedTasksCard({
                     )}`}
                   />
                   <div>
-                    <p className="text-sm font-medium text-zinc-200">
+                    <p className="text-sm font-medium text-zinc-100">
                       {task.title}
                     </p>
                     {!compact ? (
-                      <p className="mt-1 text-xs leading-5 text-zinc-400">
+                      <p className="mt-1 text-xs leading-5 text-slate-400">
                         {task.description}
                       </p>
                     ) : null}
                   </div>
                 </div>
-                <span className="shrink-0 text-[11px] uppercase tracking-wide text-zinc-500">
+                <span className="shrink-0 rounded-full border border-white/8 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">
                   {task.priority}
                 </span>
               </div>
-              <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-600">
-                <span>{task.source}</span>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
+                <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
+                  {task.source}
+                </span>
                 {!compact && task.suggestedOwner ? (
-                  <span>Owner: {task.suggestedOwner}</span>
+                  <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
+                    Owner: {task.suggestedOwner}
+                  </span>
                 ) : null}
                 {!compact && task.dueDate ? (
-                  <span>Due: {new Date(task.dueDate).toLocaleDateString()}</span>
+                  <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
+                    Due: {new Date(task.dueDate).toLocaleDateString()}
+                  </span>
                 ) : null}
-                {!compact ? <span>Status: {task.status}</span> : null}
-                {!compact ? <span>Agent: {task.sourceAgentId}</span> : null}
+                {!compact ? (
+                  <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
+                    Status: {task.status}
+                  </span>
+                ) : null}
+                {!compact ? (
+                  <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
+                    Agent: {task.sourceAgentId}
+                  </span>
+                ) : null}
               </div>
             </div>
           ))}

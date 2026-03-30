@@ -12,6 +12,7 @@ export default async function CostsPage() {
   const operationsAlerts = snapshot.riskAlerts.filter(
     (alert) => alert.category === "operations"
   );
+  const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
   const costPipeline = snapshot.state.pipelines.find(
     (pipeline) => pipeline.id === "devops-signals"
   );
@@ -30,6 +31,12 @@ export default async function CostsPage() {
           description="Anomaly and spend-risk signals currently affecting the workspace."
         />
       </div>
+      <RiskAlertsCard
+        alerts={driftAlerts}
+        title="Cost And Execution Drift"
+        description="Cross-signal drift where spend, approvals, docs, or ownership are no longer lining up cleanly."
+        limit={3}
+      />
       <CostRiskCard report={snapshot.costReport} />
     </div>
   );
