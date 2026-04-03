@@ -3,6 +3,8 @@ import { DelegationHistoryCard } from "@/components/dashboard/delegation-history
 import { DecisionLogCard } from "@/components/dashboard/decision-log-card";
 import { MeetingArtifactsCard } from "@/components/dashboard/meeting-artifacts-card";
 import { RiskAlertsCard } from "@/components/dashboard/risk-alerts-card";
+import { RuntimeRunsCard } from "@/components/dashboard/runtime-runs-card";
+import { RuntimeSessionsCard } from "@/components/dashboard/runtime-sessions-card";
 import { ScheduledBriefingsCard } from "@/components/dashboard/scheduled-briefings-card";
 import { SecurityEventsCard } from "@/components/dashboard/security-events-card";
 import { SlackMessageHistoryCard } from "@/components/dashboard/slack-message-history-card";
@@ -10,16 +12,19 @@ import { SourceDocumentsCard } from "@/components/dashboard/source-documents-car
 import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
+import { listAuthrixRuntimeRuns, listAuthrixRuntimeSessions } from "@/lib/runtime/service";
 import { listSecurityEvents } from "@/lib/security/events";
 import { loadSlackWorkspaceState } from "@/lib/slack/store";
 
 export default async function ActivityPage() {
   await requireSession("/activity");
 
-  const [snapshot, securityEvents, slackState] = await Promise.all([
+  const [snapshot, securityEvents, slackState, runtimeSessions, runtimeRuns] = await Promise.all([
     getWorkspaceSnapshot(),
     listSecurityEvents(10),
     loadSlackWorkspaceState(),
+    listAuthrixRuntimeSessions(8),
+    listAuthrixRuntimeRuns(8),
   ]);
   const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
 
@@ -47,6 +52,10 @@ export default async function ActivityPage() {
           schedules={slackState.briefingSchedules}
           briefings={slackState.briefings}
         />
+      </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <RuntimeSessionsCard sessions={runtimeSessions} limit={8} />
+        <RuntimeRunsCard runs={runtimeRuns} limit={8} />
       </div>
       <SlackMessageHistoryCard messages={slackState.messages} />
       <SecurityEventsCard events={securityEvents} limit={10} />
