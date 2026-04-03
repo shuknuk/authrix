@@ -2,6 +2,10 @@
 
 This document is the implementation-facing product blueprint for Authrix.
 
+Status note:
+- the phase status language in this document is now too optimistic for the current "true autonomy" goal
+- use [docs/autonomy-implementation-plan.md](./autonomy-implementation-plan.md) as the active roadmap for turning Authrix into a real autonomous startup worker
+
 It reflects the real product path. Mock data and local fallbacks are allowed during development, but they are not the target architecture. Authrix is being built as a real startup operations product with its own runtime identity, backend rules, security model, and control tower.
 
 ## Product Definition

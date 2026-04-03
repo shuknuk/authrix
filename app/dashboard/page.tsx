@@ -9,6 +9,8 @@ import { getDeploymentReadinessReport } from "@/lib/deployment/readiness";
 import { ModelLayerCard } from "@/components/dashboard/model-layer-card";
 import { OperatorOnboardingCard } from "@/components/dashboard/operator-onboarding-card";
 import { RiskAlertsCard } from "@/components/dashboard/risk-alerts-card";
+import { RuntimeRunsCard } from "@/components/dashboard/runtime-runs-card";
+import { RuntimeSessionsCard } from "@/components/dashboard/runtime-sessions-card";
 import { ScheduledBriefingsCard } from "@/components/dashboard/scheduled-briefings-card";
 import { SecurityPostureCard } from "@/components/dashboard/security-posture-card";
 import { SuggestedTasksCard } from "@/components/dashboard/suggested-tasks-card";
@@ -20,18 +22,29 @@ import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 import { getSecurityPosture } from "@/lib/security/status";
 import { loadSlackWorkspaceState } from "@/lib/slack/store";
 import { getModelLayerStatus } from "@/lib/models/provider";
+import { listAuthrixRuntimeRuns, listAuthrixRuntimeSessions } from "@/lib/runtime/service";
 
 export default async function DashboardPage() {
   await requireSession("/dashboard");
 
-  const [snapshot, jobs, securityPosture, readinessReport, slackState, modelLayerStatus] =
-    await Promise.all([
+  const [
+    snapshot,
+    jobs,
+    securityPosture,
+    readinessReport,
+    slackState,
+    modelLayerStatus,
+    runtimeSessions,
+    runtimeRuns,
+  ] = await Promise.all([
     getWorkspaceSnapshot(),
     listWorkspaceJobs(1),
     Promise.resolve(getSecurityPosture()),
     getDeploymentReadinessReport(),
     loadSlackWorkspaceState(),
     Promise.resolve(getModelLayerStatus()),
+    listAuthrixRuntimeSessions(4),
+    listAuthrixRuntimeRuns(4),
   ]);
   const engineeringPipeline = snapshot.state.pipelines.find(
     (pipeline) => pipeline.id === "engineering-summary"
@@ -105,6 +118,7 @@ export default async function DashboardPage() {
           conversations={slackState.conversations}
           dispatches={slackState.dispatches}
         />
+        <RuntimeSessionsCard sessions={runtimeSessions} limit={4} />
         <ScheduledBriefingsCard
           schedules={slackState.briefingSchedules}
           briefings={slackState.briefings}
@@ -113,6 +127,7 @@ export default async function DashboardPage() {
           dispatches={slackState.dispatches}
           briefings={slackState.briefings}
         />
+        <RuntimeRunsCard runs={runtimeRuns} limit={4} />
         <DelegationHistoryCard delegations={slackState.delegations} />
         <WeeklySummaryCard summary={snapshot.engineeringSummary} />
         <ChatTaskDispatchCard dispatches={slackState.taskDispatches} />

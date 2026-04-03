@@ -31,6 +31,19 @@ export interface Session {
   metadata: Record<string, unknown>;
 }
 
+export type RuntimeSessionOrigin = "slack" | "web" | "api" | "system";
+export type RuntimeSessionState = "active" | "archived";
+
+export interface RuntimeSessionRecord extends Session {
+  workspaceId: string;
+  origin: RuntimeSessionOrigin;
+  state: RuntimeSessionState;
+  runCount: number;
+  messageCount: number;
+  lastRunAt?: string;
+  lastError?: string;
+}
+
 export interface ToolResult {
   success: boolean;
   output: unknown;
@@ -56,6 +69,9 @@ export interface RuntimeStatus {
     hostLevelToolsAllowed: boolean;
     mode: "default-deny-host" | "allowlist" | "mixed";
   };
+  sessionCount?: number;
+  activeRunCount?: number;
+  recentRunCount?: number;
 }
 
 export type JobState = "queued" | "running" | "completed" | "failed";
@@ -68,6 +84,55 @@ export interface JobStatus {
   completedAt?: string;
   result?: unknown;
   error?: string;
+}
+
+export interface RuntimeRunRecord {
+  id: string;
+  sessionId: string;
+  agentId: string;
+  provider: RuntimeProvider;
+  origin: RuntimeSessionOrigin;
+  status: JobState;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  inputSummary: string;
+  outputSummary?: string;
+  error?: string;
+  tools: string[];
+  metadata: Record<string, unknown>;
+}
+
+export type RuntimeTranscriptEventType =
+  | "session_created"
+  | "agent_input"
+  | "agent_output"
+  | "run_status"
+  | "tool_result";
+
+export type RuntimeTranscriptRole = "user" | "assistant" | "system";
+
+export interface RuntimeTranscriptEvent {
+  id: string;
+  sessionId: string;
+  runId?: string;
+  role: RuntimeTranscriptRole;
+  type: RuntimeTranscriptEventType;
+  content: string;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+}
+
+export type RuntimeControlEventType = "bridge_reset";
+export type RuntimeControlEventStatus = "succeeded" | "failed";
+
+export interface RuntimeControlEvent {
+  id: string;
+  type: RuntimeControlEventType;
+  status: RuntimeControlEventStatus;
+  createdAt: string;
+  message: string;
+  metadata: Record<string, unknown>;
 }
 
 export interface RuntimeBridge {

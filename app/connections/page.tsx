@@ -19,9 +19,14 @@ import { SecurityPostureCard } from "@/components/dashboard/security-posture-car
 import { listSecurityEvents } from "@/lib/security/events";
 import { SecurityEventsCard } from "@/components/dashboard/security-events-card";
 import { OperatorOnboardingCard } from "@/components/dashboard/operator-onboarding-card";
+import { RuntimeControlCard } from "@/components/dashboard/runtime-control-card";
 import { SlackSetupCard } from "@/components/dashboard/slack-setup-card";
 import { ModelLayerCard } from "@/components/dashboard/model-layer-card";
 import { getModelLayerStatus } from "@/lib/models/provider";
+import { RuntimeRunsCard } from "@/components/dashboard/runtime-runs-card";
+import { RuntimeSessionsCard } from "@/components/dashboard/runtime-sessions-card";
+import { listAuthrixRuntimeRuns, listAuthrixRuntimeSessions } from "@/lib/runtime/service";
+import { listRuntimeControlEvents } from "@/lib/runtime/control";
 
 export default async function ConnectionsPage() {
   await requireSession("/connections");
@@ -34,6 +39,9 @@ export default async function ConnectionsPage() {
     readinessReport,
     smokeReport,
     modelLayerStatus,
+    runtimeSessions,
+    runtimeRuns,
+    runtimeControlEvents,
   ] = await Promise.all([
     getWorkspaceSnapshot(),
     getRuntimeBridge().getStatus(),
@@ -42,6 +50,9 @@ export default async function ConnectionsPage() {
     getDeploymentReadinessReport(),
     runDeploymentSmokeTest(),
     Promise.resolve(getModelLayerStatus()),
+    listAuthrixRuntimeSessions(8),
+    listAuthrixRuntimeRuns(8),
+    listRuntimeControlEvents(5),
   ]);
   const integrations = snapshot.integrations;
   const githubConnectionName = getGitHubConnectionName();
@@ -97,6 +108,15 @@ export default async function ConnectionsPage() {
             <p className="mt-2 text-[11px] text-zinc-600">
               Tool policy: {runtimeStatus.toolPolicy?.mode ?? "unknown"}
             </p>
+            <p className="mt-2 text-[11px] text-zinc-600">
+              Persisted sessions: {runtimeStatus.sessionCount ?? runtimeSessions.length}
+            </p>
+            <p className="mt-2 text-[11px] text-zinc-600">
+              Active runs: {runtimeStatus.activeRunCount ?? 0}
+            </p>
+            <p className="mt-2 text-[11px] text-zinc-600">
+              Runs in last 24h: {runtimeStatus.recentRunCount ?? runtimeRuns.length}
+            </p>
           </div>
           <span
             className={`rounded-full px-3 py-1 text-xs ${
@@ -115,6 +135,13 @@ export default async function ConnectionsPage() {
           </span>
         </div>
       </CardShell>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <RuntimeSessionsCard sessions={runtimeSessions} limit={8} />
+        <RuntimeRunsCard runs={runtimeRuns} limit={8} />
+      </div>
+
+      <RuntimeControlCard status={runtimeStatus} events={runtimeControlEvents} />
 
       <CardShell
         title="Product State"
