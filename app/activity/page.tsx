@@ -1,6 +1,7 @@
 import { ActivityTimelineCard } from "@/components/dashboard/activity-timeline-card";
 import { DelegationHistoryCard } from "@/components/dashboard/delegation-history-card";
 import { DecisionLogCard } from "@/components/dashboard/decision-log-card";
+import { EngineerExecutionsCard } from "@/components/dashboard/engineer-executions-card";
 import { MeetingArtifactsCard } from "@/components/dashboard/meeting-artifacts-card";
 import { RiskAlertsCard } from "@/components/dashboard/risk-alerts-card";
 import { RuntimeRunsCard } from "@/components/dashboard/runtime-runs-card";
@@ -12,6 +13,7 @@ import { SourceDocumentsCard } from "@/components/dashboard/source-documents-car
 import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
+import { listEngineerExecutionRecords } from "@/lib/engineer/store";
 import { listAuthrixRuntimeRuns, listAuthrixRuntimeSessions } from "@/lib/runtime/service";
 import { listSecurityEvents } from "@/lib/security/events";
 import { loadSlackWorkspaceState } from "@/lib/slack/store";
@@ -19,12 +21,20 @@ import { loadSlackWorkspaceState } from "@/lib/slack/store";
 export default async function ActivityPage() {
   await requireSession("/activity");
 
-  const [snapshot, securityEvents, slackState, runtimeSessions, runtimeRuns] = await Promise.all([
+  const [
+    snapshot,
+    securityEvents,
+    slackState,
+    runtimeSessions,
+    runtimeRuns,
+    engineerExecutions,
+  ] = await Promise.all([
     getWorkspaceSnapshot(),
     listSecurityEvents(10),
     loadSlackWorkspaceState(),
     listAuthrixRuntimeSessions(8),
     listAuthrixRuntimeRuns(8),
+    listEngineerExecutionRecords(6),
   ]);
   const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
 
@@ -57,6 +67,7 @@ export default async function ActivityPage() {
         <RuntimeSessionsCard sessions={runtimeSessions} limit={8} />
         <RuntimeRunsCard runs={runtimeRuns} limit={8} />
       </div>
+      <EngineerExecutionsCard executions={engineerExecutions} limit={6} />
       <SlackMessageHistoryCard messages={slackState.messages} />
       <SecurityEventsCard events={securityEvents} limit={10} />
       <ActivityTimelineCard entries={snapshot.timeline} />

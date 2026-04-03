@@ -4,6 +4,7 @@ export async function postSlackReply(input: {
   channel: string;
   text: string;
   threadTs?: string;
+  blocks?: unknown[];
 }): Promise<void> {
   await postSlackMessage(input);
 }
@@ -12,6 +13,7 @@ export async function postSlackMessage(input: {
   channel: string;
   text: string;
   threadTs?: string;
+  blocks?: unknown[];
 }): Promise<void> {
   if (!canSlackReply()) {
     return;
@@ -28,6 +30,7 @@ export async function postSlackMessage(input: {
       channel: input.channel,
       text: input.text,
       thread_ts: input.threadTs,
+      blocks: input.blocks,
     }),
   });
 

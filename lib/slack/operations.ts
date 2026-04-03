@@ -6,6 +6,7 @@ import type {
   SlackTaskDispatchRecord,
 } from "@/types/messaging";
 import type { RouteDecision } from "@/types/models";
+import type { JobState } from "@/types/runtime";
 
 const WORKSPACE_ID = "workspace-authrix";
 
@@ -84,13 +85,38 @@ export function buildSlackAcknowledgement(input: {
   routeReason: string;
   delegations: SlackDelegationRecord[];
   taskDispatches: SlackTaskDispatchRecord[];
+  runtime:
+    | {
+        sessionMode: "created" | "reused";
+        sessionId: string;
+        runId: string;
+        runStatus: JobState;
+      }
+    | {
+        error: string;
+      };
 }): string {
   const label = formatAgentLabel(input.routedAgentId);
-  const lines = [
-    `*Authrix · ${label}*`,
-    "Your request has been recorded in the control tower and routed into the shared workspace.",
-    `_${input.routeReason}_`,
-  ];
+  const lines = [`*Authrix - ${label}*`];
+
+  if ("error" in input.runtime) {
+    lines.push(
+      "Your request has been recorded in the control tower, but the live runtime could not be started yet."
+    );
+    lines.push(`_Runtime error: ${truncateForSlack(input.runtime.error, 220)}_`);
+  } else {
+    lines.push(
+      input.runtime.sessionMode === "reused"
+        ? "Continuing this Slack thread in the same persistent runtime session."
+        : "Started a new persistent runtime session for this Slack thread."
+    );
+    lines.push("Queued live runtime work and will post the result back into this thread.");
+    lines.push(
+      `Session \`${shortId(input.runtime.sessionId)}\` | Run \`${shortId(input.runtime.runId)}\``
+    );
+  }
+
+  lines.push(`_${input.routeReason}_`);
 
   if (input.delegations.length > 0) {
     lines.push(
@@ -104,6 +130,33 @@ export function buildSlackAcknowledgement(input: {
     );
   }
 
+  return lines.join("\n");
+}
+
+export function buildSlackRunOutcomeReply(input: {
+  routedAgentId: RoutedSlackAgentId;
+  status: "completed" | "failed" | "running";
+  outputSummary?: string;
+  error?: string;
+  sessionId: string;
+  runId: string;
+}): string {
+  const label = formatAgentLabel(input.routedAgentId);
+  const lines = [`*Authrix - ${label}*`];
+
+  if (input.status === "completed") {
+    lines.push("Completed the latest thread run.");
+    if (input.outputSummary) {
+      lines.push(formatSummaryBlock(input.outputSummary));
+    }
+  } else if (input.status === "failed") {
+    lines.push("The latest thread run failed.");
+    lines.push(`_${truncateForSlack(input.error ?? "Unknown runtime error.")}_`);
+  } else {
+    lines.push("The latest thread run is still in progress.");
+  }
+
+  lines.push(`Session \`${shortId(input.sessionId)}\` | Run \`${shortId(input.runId)}\``);
   return lines.join("\n");
 }
 
@@ -238,4 +291,17 @@ function matchesAny(input: string, patterns: string[]): boolean {
 
 function dedupeAgents<T>(items: T[]): T[] {
   return [...new Set(items)];
+}
+
+function shortId(value: string): string {
+  return value.length > 12 ? `${value.slice(0, 12)}...` : value;
+}
+
+function formatSummaryBlock(value: string): string {
+  return `\`\`\`\n${truncateForSlack(value)}\n\`\`\``;
+}
+
+function truncateForSlack(value: string, maxLength = 700): string {
+  const normalized = value.trim();
+  return normalized.length > maxLength ? `${normalized.slice(0, maxLength - 3)}...` : normalized;
 }

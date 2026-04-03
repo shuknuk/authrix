@@ -457,6 +457,110 @@ export async function recordApprovalExecutionResult(
   return updatedSnapshot.approvalRequests.find((item) => item.id === id) ?? null;
 }
 
+export async function createLiveApprovalRequest(input: {
+  actionKind: string;
+  title: string;
+  description: string;
+  sourceAgent: string;
+  affectedSystem: string;
+  riskLevel: ApprovalRequest["riskLevel"];
+  proposedActionStatus?: ProposedAction["status"];
+  relatedRecordIds?: string[];
+  metadata?: Record<string, unknown>;
+}): Promise<{
+  action: ProposedAction;
+  approval: ApprovalRequest;
+} | null> {
+  const createdAt = new Date().toISOString();
+  const actionId = `proposed-action-live-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const approvalId = `approval-live-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const proposedStatus = input.proposedActionStatus ?? "proposed";
+
+  const updatedSnapshot = await updatePersistedWorkspaceSnapshot((snapshot) => {
+    const action: ProposedAction = {
+      id: actionId,
+      workspaceId: WORKSPACE_ID,
+      actionKind: input.actionKind,
+      title: input.title,
+      description: input.description,
+      targetSystem: input.affectedSystem,
+      riskLevel: input.riskLevel,
+      sourceAgentId: input.sourceAgent,
+      status: proposedStatus,
+      createdAt,
+      approvalRequestId: approvalId,
+      relatedRecordIds: [...(input.relatedRecordIds ?? [])],
+      metadata: {
+        live: true,
+        ...(input.metadata ?? {}),
+      },
+    };
+    const approval: ApprovalRequest = {
+      id: approvalId,
+      actionKind: input.actionKind,
+      title: input.title,
+      description: input.description,
+      sourceAgent: input.sourceAgent,
+      affectedSystem: input.affectedSystem,
+      riskLevel: input.riskLevel,
+      status: proposedStatus === "approved" ? "approved" : "pending",
+      requestedAt: createdAt,
+      proposedActionId: actionId,
+      relatedRecordIds: [...(input.relatedRecordIds ?? [])],
+      metadata: {
+        live: true,
+        ...(input.metadata ?? {}),
+      },
+    };
+
+    snapshot.proposedActions.unshift(action);
+    snapshot.approvalRequests.unshift(approval);
+    snapshot.auditEvents.unshift({
+      id: `audit-live-approval-${approval.id}`,
+      workspaceId: WORKSPACE_ID,
+      action: "approval.requested",
+      actor: input.sourceAgent,
+      target: input.affectedSystem,
+      details: `${input.title} was proposed for approval.`,
+      timestamp: createdAt,
+      metadata: {
+        approvalId: approval.id,
+        actionKind: approval.actionKind,
+        live: true,
+      },
+      relatedRecordIds: approval.relatedRecordIds,
+    });
+    snapshot.timeline.unshift({
+      id: `timeline-live-approval-${approval.id}`,
+      type: "approval",
+      title: approval.title,
+      description: `Approval requested for ${approval.actionKind}.`,
+      source: approval.sourceAgent,
+      timestamp: createdAt,
+      metadata: {
+        status: approval.status,
+        riskLevel: approval.riskLevel,
+        live: true,
+      },
+      relatedRecordIds: approval.relatedRecordIds,
+    });
+    snapshot.state = {
+      ...snapshot.state,
+      refreshedAt: createdAt,
+    };
+
+    return snapshot;
+  });
+
+  if (!updatedSnapshot) {
+    return null;
+  }
+
+  const action = updatedSnapshot.proposedActions.find((item) => item.id === actionId);
+  const approval = updatedSnapshot.approvalRequests.find((item) => item.id === approvalId);
+  return action && approval ? { action, approval } : null;
+}
+
 async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   const refreshedAt = new Date().toISOString();
   const existingSnapshot = await loadPersistedWorkspaceSnapshot();
@@ -519,13 +623,19 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
     tasks,
   });
 
-  const proposedActions = buildProposedActions(
-    tasks,
-    decisionRecords,
-    [...baseRiskAlerts, ...operationalDriftAlerts],
-    meetingArtifacts
+  const proposedActions = mergePersistedProposedActions(
+    buildProposedActions(
+      tasks,
+      decisionRecords,
+      [...baseRiskAlerts, ...operationalDriftAlerts],
+      meetingArtifacts
+    ),
+    existingSnapshot?.proposedActions ?? []
   );
-  const approvalRequests = buildApprovalRequests(proposedActions);
+  const approvalRequests = mergePersistedApprovalRequests(
+    buildApprovalRequests(proposedActions),
+    existingSnapshot?.approvalRequests ?? []
+  );
   const approvalDriftAlerts = buildApprovalDriftAlerts({
     workspaceId: WORKSPACE_ID,
     generatedAt: refreshedAt,
@@ -981,6 +1091,9 @@ function buildProposedActions(
       status: "proposed",
       createdAt: operationsAlert.createdAt,
       relatedRecordIds: [operationsAlert.id],
+      metadata: {
+        live: false,
+      },
     });
   }
 
@@ -998,6 +1111,9 @@ function buildProposedActions(
       status: "proposed",
       createdAt: highPriorityTask.createdAt,
       relatedRecordIds: [highPriorityTask.id],
+      metadata: {
+        live: false,
+      },
     });
   }
 
@@ -1018,6 +1134,9 @@ function buildProposedActions(
         documentationDecision.id,
         ...(meetingArtifact ? [meetingArtifact.id] : []),
       ],
+      metadata: {
+        live: false,
+      },
     });
   }
 
@@ -1035,6 +1154,9 @@ function buildProposedActions(
       status: "proposed",
       createdAt: documentationDriftAlert.createdAt,
       relatedRecordIds: documentationDriftAlert.relatedRecordIds,
+      metadata: {
+        live: false,
+      },
     });
   }
 
@@ -1052,6 +1174,9 @@ function buildProposedActions(
       status: "proposed",
       createdAt: decisionDriftAlert.createdAt,
       relatedRecordIds: decisionDriftAlert.relatedRecordIds,
+      metadata: {
+        live: false,
+      },
     });
   }
 
@@ -1069,6 +1194,9 @@ function buildProposedActions(
       status: "proposed",
       createdAt: recurringQuestionAlert.createdAt,
       relatedRecordIds: recurringQuestionAlert.relatedRecordIds,
+      metadata: {
+        live: false,
+      },
     });
   }
 
@@ -1086,6 +1214,9 @@ function buildProposedActions(
       status: "proposed",
       createdAt: executionBacklogAlert.createdAt,
       relatedRecordIds: executionBacklogAlert.relatedRecordIds,
+      metadata: {
+        live: false,
+      },
     });
   }
 
@@ -1103,6 +1234,9 @@ function buildProposedActions(
       status: "proposed",
       createdAt: operationsMismatchAlert.createdAt,
       relatedRecordIds: operationsMismatchAlert.relatedRecordIds,
+      metadata: {
+        live: false,
+      },
     });
   }
 
@@ -1136,9 +1270,66 @@ function buildApprovalRequests(
             ? "Approved for controlled documentation update."
             : undefined,
         relatedRecordIds: [...action.relatedRecordIds],
+        metadata: action.metadata ? { ...action.metadata } : undefined,
       };
     })
     .sort(sortByDateDesc("requestedAt"));
+}
+
+function mergePersistedProposedActions(
+  nextActions: ProposedAction[],
+  persistedActions: ProposedAction[]
+): ProposedAction[] {
+  const persistedById = new Map(persistedActions.map((action) => [action.id, action]));
+  const merged = nextActions.map((action) => {
+    const persisted = persistedById.get(action.id);
+    if (!persisted) {
+      return action;
+    }
+
+    return {
+      ...action,
+      status: persisted.status,
+      approvalRequestId: persisted.approvalRequestId ?? action.approvalRequestId,
+      metadata: {
+        ...(action.metadata ?? {}),
+        ...(persisted.metadata ?? {}),
+      },
+    };
+  });
+  const mergedIds = new Set(merged.map((action) => action.id));
+  const carried = persistedActions.filter((action) => !mergedIds.has(action.id));
+
+  return dedupeProposedActions([...merged, ...carried]);
+}
+
+function mergePersistedApprovalRequests(
+  nextApprovals: ApprovalRequest[],
+  persistedApprovals: ApprovalRequest[]
+): ApprovalRequest[] {
+  const persistedById = new Map(persistedApprovals.map((approval) => [approval.id, approval]));
+  const merged = nextApprovals.map((approval) => {
+    const persisted = persistedById.get(approval.id);
+    if (!persisted) {
+      return approval;
+    }
+
+    return {
+      ...approval,
+      status: persisted.status,
+      resolvedAt: persisted.resolvedAt,
+      resolvedBy: persisted.resolvedBy,
+      executionResult: persisted.executionResult,
+      metadata: {
+        ...(approval.metadata ?? {}),
+        ...(persisted.metadata ?? {}),
+      },
+    };
+  });
+  const mergedIds = new Set(merged.map((approval) => approval.id));
+  const carried = persistedApprovals.filter((approval) => !mergedIds.has(approval.id));
+
+  return [...merged, ...carried].sort(sortByDateDesc("requestedAt"));
 }
 
 function dedupeProposedActions(actions: ProposedAction[]): ProposedAction[] {
