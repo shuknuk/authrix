@@ -1,4 +1,5 @@
 import { getBaseRuntimeBridge, getRuntimeBridge } from "@/lib/runtime/bridge";
+import { executeEngineerAutonomyRun } from "@/lib/engineer/executor";
 import {
   appendRuntimeTranscriptEvent,
   createRuntimeRunRecord,
@@ -214,23 +215,48 @@ async function executeQueuedRuntimeAgentRun(input: {
   });
 
   try {
-    const result = await bridge.executeAgent({
-      agentId: input.agentId,
-      input: input.payload,
-      tools: input.tools,
-      sessionId: input.sessionId,
-    });
-    const completedAt = result.metadata.timestamp ?? new Date().toISOString();
-    const outputSummary = summarizePayload(result.output, 800);
+    const engineerRequest = readEngineerRequest(input.agentId, input.payload);
+    const result = engineerRequest
+      ? await executeEngineerAutonomyRun({
+          sessionId: input.sessionId,
+          runId: input.runId,
+          request: engineerRequest.request,
+          requestedRepository: engineerRequest.repository,
+        })
+      : await bridge.executeAgent({
+          agentId: input.agentId,
+          input: input.payload,
+          tools: input.tools,
+          sessionId: input.sessionId,
+        });
+    const completedAt =
+      "metadata" in result && typeof result.metadata.timestamp === "string"
+        ? result.metadata.timestamp
+        : new Date().toISOString();
+    const outputSummary =
+      "output" in result
+        ? summarizePayload(result.output, 800)
+        : summarizePayload(result.outputSummary, 800);
+    const resultMetadata = {
+      ...(result.metadata ?? {}),
+    };
+
+    if (!Array.isArray(resultMetadata.allowedTools)) {
+      resultMetadata.allowedTools = [];
+    }
+
+    if (!Array.isArray(resultMetadata.blockedTools)) {
+      resultMetadata.blockedTools = [];
+    }
 
     await updateRuntimeRunRecord(input.runId, {
       status: "completed",
       completedAt,
       outputSummary,
       metadata: {
-        executionTimeMs: result.metadata.executionTimeMs,
-        allowedTools: result.metadata.allowedTools ?? [],
-        blockedTools: result.metadata.blockedTools ?? [],
+        ...resultMetadata,
+        engineerExecutionId:
+          "execution" in result ? result.execution.id : undefined,
       },
     });
 
@@ -250,7 +276,10 @@ async function executeQueuedRuntimeAgentRun(input: {
       metadata: {
         agentId: input.agentId,
         provider: bridge.provider,
-        executionTimeMs: result.metadata.executionTimeMs,
+        executionTimeMs:
+          "metadata" in result && typeof result.metadata.executionTimeMs === "number"
+            ? result.metadata.executionTimeMs
+            : undefined,
       },
     });
 
@@ -327,4 +356,29 @@ function toErrorMessage(error: unknown): string {
   }
 
   return "Unknown runtime error.";
+}
+
+function readEngineerRequest(
+  agentId: string,
+  payload: unknown
+): { request: string; repository?: string | null } | null {
+  if (agentId !== "engineer" || typeof payload !== "object" || payload === null) {
+    return null;
+  }
+
+  const candidate = payload as {
+    request?: unknown;
+    repository?: unknown;
+  };
+  if (typeof candidate.request !== "string" || !candidate.request.trim()) {
+    return null;
+  }
+
+  return {
+    request: candidate.request.trim(),
+    repository:
+      typeof candidate.repository === "string" && candidate.repository.trim()
+        ? candidate.repository.trim()
+        : null,
+  };
 }

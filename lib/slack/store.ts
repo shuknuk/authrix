@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolveAuthrixDataPath } from "@/lib/security/paths";
 import { getSlackConfig } from "@/lib/slack/config";
+import type { AgentId } from "@/types/agents";
 import type {
   NormalizedSlackMessage,
   RoutedSlackAgentId,
@@ -15,6 +16,7 @@ import type {
   SlackWorkspaceState,
 } from "@/types/messaging";
 import type { RouteDecision } from "@/types/models";
+import type { JobState } from "@/types/runtime";
 
 const SLACK_STATE_PATH = resolveAuthrixDataPath("slack-state.json");
 const WORKSPACE_ID = "workspace-authrix";
@@ -52,6 +54,11 @@ export async function recordSlackDispatch(input: {
   delegations?: SlackDelegationRecord[];
   taskDispatches?: SlackTaskDispatchRecord[];
   replyText?: string;
+  runtime?: {
+    sessionId?: string;
+    runId?: string;
+    runStatus?: JobState;
+  };
 }): Promise<SlackMessageDispatchResult> {
   const state = await loadSlackWorkspaceState();
   const now = new Date().toISOString();
@@ -65,6 +72,15 @@ export async function recordSlackDispatch(input: {
   conversation.routedAgentId = input.routedAgentId;
   conversation.lastMessageAt = now;
   conversation.updatedAt = now;
+  if (input.runtime?.sessionId) {
+    conversation.runtimeSessionId = input.runtime.sessionId;
+  }
+  if (input.runtime?.runId) {
+    conversation.runtimeRunCount = incrementRunCount(conversation, input.runtime.runId);
+    conversation.runtimeLastRunId = input.runtime.runId;
+    conversation.runtimeLastRunStatus = input.runtime.runStatus;
+    conversation.runtimeLastRunAt = now;
+  }
 
   const existingConversationIndex = state.conversations.findIndex(
     (entry) => entry.id === conversation.id
@@ -114,6 +130,9 @@ export async function recordSlackDispatch(input: {
     delegationIds: delegations.map((item) => item.id),
     taskDispatchIds: taskDispatches.map((item) => item.id),
     createdAt: now,
+    runtimeSessionId: input.runtime?.sessionId,
+    runtimeRunId: input.runtime?.runId,
+    runtimeRunStatus: input.runtime?.runStatus,
   };
   state.dispatches.unshift(dispatch);
   state.delegations.unshift(...delegations);
@@ -159,6 +178,158 @@ export async function recordSlackDispatch(input: {
     delegations,
     taskDispatches,
     routedAgentId: input.routedAgentId,
+  };
+}
+
+export async function findSlackConversationByThread(input: {
+  channelId: string;
+  threadTs: string;
+}): Promise<SlackConversation | null> {
+  const state = await loadSlackWorkspaceState();
+  return (
+    state.conversations.find(
+      (conversation) =>
+        conversation.channelId === input.channelId && conversation.threadTs === input.threadTs
+    ) ?? null
+  );
+}
+
+export async function appendSlackReplyMessage(input: {
+  conversationId: string;
+  text: string;
+  agentId?: AgentId;
+  senderLabel?: string;
+  createdAt?: string;
+}): Promise<{
+  conversation: SlackConversation;
+  message: SlackMessageRecord;
+}> {
+  const state = await loadSlackWorkspaceState();
+  const now = input.createdAt ?? new Date().toISOString();
+  const conversationIndex = state.conversations.findIndex(
+    (conversation) => conversation.id === input.conversationId
+  );
+
+  if (conversationIndex === -1) {
+    throw new Error(`Slack conversation ${input.conversationId} was not found.`);
+  }
+
+  const conversation = {
+    ...state.conversations[conversationIndex],
+    updatedAt: now,
+    lastMessageAt: now,
+  };
+  const message: SlackMessageRecord = {
+    id: `slack_msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    workspaceId: WORKSPACE_ID,
+    conversationId: conversation.id,
+    platform: "slack",
+    direction: "outgoing",
+    channelId: conversation.channelId,
+    threadTs: conversation.threadTs,
+    slackTs: `local_${Date.now()}`,
+    senderId: "authrix-bot",
+    senderLabel: input.senderLabel ?? "Authrix",
+    text: input.text,
+    agentId: input.agentId,
+    createdAt: now,
+  };
+
+  state.conversations[conversationIndex] = conversation;
+  state.messages.unshift(message);
+  state.messages = state.messages.slice(0, 200);
+  state.conversations = state.conversations
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 40);
+
+  await saveSlackWorkspaceState(state);
+
+  return {
+    conversation,
+    message,
+  };
+}
+
+export async function recordSlackRuntimeRunUpdate(input: {
+  conversationId: string;
+  agentId: RoutedSlackAgentId;
+  runId: string;
+  status: JobState;
+  sessionId?: string;
+  outputSummary?: string;
+  error?: string;
+  replyText?: string;
+  createdAt?: string;
+}): Promise<{
+  conversation: SlackConversation;
+  outgoingMessage?: SlackMessageRecord;
+}> {
+  const state = await loadSlackWorkspaceState();
+  const now = input.createdAt ?? new Date().toISOString();
+  const conversationIndex = state.conversations.findIndex(
+    (conversation) => conversation.id === input.conversationId
+  );
+
+  if (conversationIndex === -1) {
+    throw new Error(`Slack conversation ${input.conversationId} was not found.`);
+  }
+
+  const conversation = {
+    ...state.conversations[conversationIndex],
+    updatedAt: now,
+    runtimeSessionId: input.sessionId ?? state.conversations[conversationIndex].runtimeSessionId,
+    runtimeLastRunId: input.runId,
+    runtimeLastRunStatus: input.status,
+    runtimeLastRunAt: now,
+  };
+
+  let outgoingMessage: SlackMessageRecord | undefined;
+  if (input.replyText) {
+    conversation.lastMessageAt = now;
+    outgoingMessage = {
+      id: `slack_msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId: WORKSPACE_ID,
+      conversationId: conversation.id,
+      platform: "slack",
+      direction: "outgoing",
+      channelId: conversation.channelId,
+      threadTs: conversation.threadTs,
+      slackTs: `local_${Date.now()}`,
+      senderId: "authrix-bot",
+      senderLabel: "Authrix",
+      text: input.replyText,
+      agentId: input.agentId,
+      createdAt: now,
+    };
+
+    state.messages.unshift(outgoingMessage);
+  }
+
+  state.conversations[conversationIndex] = conversation;
+
+  const dispatchIndex = state.dispatches.findIndex(
+    (dispatch) =>
+      dispatch.runtimeRunId === input.runId || dispatch.conversationId === input.conversationId
+  );
+  if (dispatchIndex >= 0) {
+    state.dispatches[dispatchIndex] = {
+      ...state.dispatches[dispatchIndex],
+      runtimeSessionId: input.sessionId ?? state.dispatches[dispatchIndex].runtimeSessionId,
+      runtimeRunId: input.runId,
+      runtimeRunStatus: input.status,
+    };
+  }
+
+  state.messages = state.messages.slice(0, 200);
+  state.conversations = state.conversations
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 40);
+
+  await saveSlackWorkspaceState(state);
+
+  return {
+    conversation,
+    outgoingMessage,
   };
 }
 
@@ -344,6 +515,14 @@ function createSystemConversation(
 function buildConversationTitle(text: string): string {
   const normalized = text.replace(/\s+/g, " ").trim();
   return normalized.length > 72 ? `${normalized.slice(0, 69)}...` : normalized || "Slack request";
+}
+
+function incrementRunCount(conversation: SlackConversation, runId: string): number {
+  if (conversation.runtimeLastRunId === runId) {
+    return conversation.runtimeRunCount ?? 1;
+  }
+
+  return (conversation.runtimeRunCount ?? 0) + 1;
 }
 
 function migrateSlackWorkspaceState(
