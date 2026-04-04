@@ -20,7 +20,7 @@ export async function executeApprovalAction(
     };
   }
 
-  if (approval.actionKind === "github.issue.create") {
+  if (approval.actionKind.startsWith("github.")) {
     return executeGitHubApprovalAction(approval);
   }
 

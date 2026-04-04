@@ -36,6 +36,9 @@ export async function recordSlackDispatchInWorkspace(
           channelId: dispatch.incomingMessage.channelId,
           threadTs: dispatch.incomingMessage.threadTs,
           conversationId: dispatch.conversation.id,
+          runtimeSessionId: dispatch.dispatch.runtimeSessionId,
+          runtimeRunId: dispatch.dispatch.runtimeRunId,
+          runtimeRunStatus: dispatch.dispatch.runtimeRunStatus,
         },
         relatedRecordIds: [dispatch.conversation.id, dispatch.incomingMessage.id],
       },
@@ -78,9 +81,17 @@ export async function recordSlackDispatchInWorkspace(
         startedAt: now,
         completedAt: now,
         inputSummary: dispatch.incomingMessage.text,
-        outputSummary: `Slack request routed to ${formatAgentLabel(dispatch.routedAgentId)}.`,
-        provider: "local" as const,
-        relatedRecordIds: [dispatch.conversation.id, dispatch.incomingMessage.id],
+        outputSummary:
+          dispatch.dispatch.runtimeRunId && dispatch.dispatch.runtimeSessionId
+            ? `Slack request queued to ${formatAgentLabel(dispatch.routedAgentId)} in runtime session ${dispatch.dispatch.runtimeSessionId}.`
+            : `Slack request routed to ${formatAgentLabel(dispatch.routedAgentId)}.`,
+        provider: dispatch.dispatch.runtimeRunId ? ("runtime" as const) : ("local" as const),
+        runtimeSessionId: dispatch.dispatch.runtimeSessionId,
+        relatedRecordIds: [
+          dispatch.conversation.id,
+          dispatch.incomingMessage.id,
+          ...(dispatch.dispatch.runtimeRunId ? [dispatch.dispatch.runtimeRunId] : []),
+        ],
       },
       ...snapshot.agentRuns,
     ].slice(0, 80);
@@ -97,6 +108,9 @@ export async function recordSlackDispatchInWorkspace(
         metadata: {
           channelId: dispatch.incomingMessage.channelId,
           threadTs: dispatch.incomingMessage.threadTs,
+          runtimeSessionId: dispatch.dispatch.runtimeSessionId,
+          runtimeRunId: dispatch.dispatch.runtimeRunId,
+          runtimeRunStatus: dispatch.dispatch.runtimeRunStatus,
         },
         relatedRecordIds: [dispatch.conversation.id, dispatch.incomingMessage.id],
       },

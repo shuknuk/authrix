@@ -234,6 +234,7 @@ export interface ApprovalRequest {
   resolvedBy?: string;
   executionResult?: string;
   relatedRecordIds?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 export interface ProposedAction {
@@ -249,6 +250,7 @@ export interface ProposedAction {
   createdAt: string;
   approvalRequestId?: string;
   relatedRecordIds: string[];
+  metadata?: Record<string, unknown>;
 }
 
 // --- Timeline ---

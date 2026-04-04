@@ -1,91 +1,76 @@
 import { ActivityTimelineCard } from "@/components/dashboard/activity-timeline-card";
+import { DelegationHistoryCard } from "@/components/dashboard/delegation-history-card";
 import { DecisionLogCard } from "@/components/dashboard/decision-log-card";
+import { EngineerExecutionsCard } from "@/components/dashboard/engineer-executions-card";
 import { MeetingArtifactsCard } from "@/components/dashboard/meeting-artifacts-card";
 import { RiskAlertsCard } from "@/components/dashboard/risk-alerts-card";
 import { RuntimeRunsCard } from "@/components/dashboard/runtime-runs-card";
+import { RuntimeSessionsCard } from "@/components/dashboard/runtime-sessions-card";
+import { ScheduledBriefingsCard } from "@/components/dashboard/scheduled-briefings-card";
 import { SecurityEventsCard } from "@/components/dashboard/security-events-card";
+import { SlackMessageHistoryCard } from "@/components/dashboard/slack-message-history-card";
 import { SourceDocumentsCard } from "@/components/dashboard/source-documents-card";
-import { MetricTile } from "@/components/ui/metric-tile";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionFrame } from "@/components/ui/section-frame";
-import { StatusPill } from "@/components/ui/status-pill";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
+import { listEngineerExecutionRecords } from "@/lib/engineer/store";
+import { listAuthrixRuntimeRuns, listAuthrixRuntimeSessions } from "@/lib/runtime/service";
 import { listSecurityEvents } from "@/lib/security/events";
-import { listRuntimeRuns } from "@/lib/runtime/store";
+import { loadSlackWorkspaceState } from "@/lib/slack/store";
 
 export default async function ActivityPage() {
   await requireSession("/activity");
 
-  const [snapshot, securityEvents, runtimeRuns] = await Promise.all([
+  const [
+    snapshot,
+    securityEvents,
+    slackState,
+    runtimeSessions,
+    runtimeRuns,
+    engineerExecutions,
+  ] = await Promise.all([
     getWorkspaceSnapshot(),
-    listSecurityEvents(8),
-    listRuntimeRuns(8),
+    listSecurityEvents(10),
+    loadSlackWorkspaceState(),
+    listAuthrixRuntimeSessions(8),
+    listAuthrixRuntimeRuns(8),
+    listEngineerExecutionRecords(6),
   ]);
   const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Activity"
-        eyebrow="Authrix Activity"
-        description="Normalized activity and records from intake to decision history."
-        status={
-          <>
-            <StatusPill tone="info">{snapshot.timeline.length} timeline entries</StatusPill>
-            <StatusPill tone={driftAlerts.length > 0 ? "warning" : "success"}>
-              {driftAlerts.length > 0 ? `${driftAlerts.length} drift alerts` : "No drift alerts"}
-            </StatusPill>
-          </>
-        }
+        description="A unified view of source intake, meeting intelligence, durable decisions, and the records Authrix builds from them."
       />
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <MetricTile label="Source documents" value={snapshot.sourceDocuments.length} tone="accent" />
-        <MetricTile label="Artifacts" value={snapshot.meetingArtifacts.length} />
-        <MetricTile label="Decisions" value={snapshot.decisionRecords.length} tone="success" />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <SourceDocumentsCard documents={snapshot.sourceDocuments} />
+        <DecisionLogCard decisions={snapshot.decisionRecords} />
       </div>
-
-      <SectionFrame
-        title="Primary Timeline"
-        description="Use this as the primary chronological view across engineering, docs, and workflow signals."
-      >
-        <ActivityTimelineCard entries={snapshot.timeline} />
-      </SectionFrame>
-
-      <SectionFrame
-        title="Source And Artifact Evidence"
-        description="Intake records and generated artifacts that support the timeline narrative."
-      >
-        <div className="grid gap-4 xl:grid-cols-2">
-          <SourceDocumentsCard documents={snapshot.sourceDocuments} limit={8} />
-          <MeetingArtifactsCard artifacts={snapshot.meetingArtifacts} limit={6} />
-        </div>
-      </SectionFrame>
-
-      <SectionFrame
-        title="Decisions And Drift"
-        description="Decision records and unresolved drift signals that need follow-through."
-      >
-        <div className="grid gap-4 xl:grid-cols-2">
-          <DecisionLogCard decisions={snapshot.decisionRecords} limit={8} />
-          <RiskAlertsCard
-            alerts={driftAlerts}
-            title="Drift Alerts"
-            description="Signals where docs, approvals, ownership, or execution have started to diverge."
-          />
-        </div>
-      </SectionFrame>
-
-      <SectionFrame
-        title="Runtime And Security"
-        description="Security events and runtime activity for audit and debugging."
-      >
-        <div className="grid gap-4 xl:grid-cols-2">
-          <SecurityEventsCard events={securityEvents} limit={8} />
-          <RuntimeRunsCard runs={runtimeRuns} />
-        </div>
-      </SectionFrame>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <MeetingArtifactsCard artifacts={snapshot.meetingArtifacts} />
+        <RiskAlertsCard
+          alerts={driftAlerts}
+          title="Operational Drift"
+          description="Docs drift, recurring open questions, and stalled approvals are surfaced here."
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <DelegationHistoryCard delegations={slackState.delegations} />
+        <ScheduledBriefingsCard
+          schedules={slackState.briefingSchedules}
+          briefings={slackState.briefings}
+        />
+      </div>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <RuntimeSessionsCard sessions={runtimeSessions} limit={8} />
+        <RuntimeRunsCard runs={runtimeRuns} limit={8} />
+      </div>
+      <EngineerExecutionsCard executions={engineerExecutions} limit={6} />
+      <SlackMessageHistoryCard messages={slackState.messages} />
+      <SecurityEventsCard events={securityEvents} limit={10} />
+      <ActivityTimelineCard entries={snapshot.timeline} />
     </div>
   );
 }

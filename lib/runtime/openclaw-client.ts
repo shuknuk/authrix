@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 import packageJson from "@/package.json";
 import type { OpenClawRuntimeConfig } from "./config";
+import {
+  buildDeviceAuthPayloadV3,
+  loadOrCreateRuntimeDeviceIdentity,
+  publicKeyRawBase64UrlFromPem,
+  signDevicePayload,
+} from "./device-identity";
 
 const OPENCLAW_PROTOCOL_VERSION = 3;
 const CONNECT_TIMEOUT_MS = 5_000;
@@ -52,6 +58,12 @@ export interface OpenClawHelloOk {
     maxPayload?: number;
     maxBufferedBytes?: number;
     tickIntervalMs?: number;
+  };
+  auth?: {
+    deviceToken?: string;
+    role?: string;
+    scopes?: string[];
+    issuedAtMs?: number;
   };
 }
 
@@ -271,19 +283,45 @@ export async function connectToOpenClawGateway(
       return;
     }
 
+    const clientId = "gateway-client";
+    const clientMode = "backend";
+    const role = "operator";
+    const platform = process.platform;
+    const deviceIdentity = loadOrCreateRuntimeDeviceIdentity();
+    const signedAt = Date.now();
+    const devicePayload = buildDeviceAuthPayloadV3({
+      deviceId: deviceIdentity.deviceId,
+      clientId,
+      clientMode,
+      role,
+      scopes: config.connectScopes,
+      signedAtMs: signedAt,
+      token: config.token ?? null,
+      nonce: connectNonce,
+      platform,
+    });
+
     connectRequestId = sendRequest<OpenClawHelloOk>("connect", {
       minProtocol: OPENCLAW_PROTOCOL_VERSION,
       maxProtocol: OPENCLAW_PROTOCOL_VERSION,
       client: {
-        id: "authrix",
+        // OpenClaw validates client IDs against its built-in backend client registry.
+        id: clientId,
         displayName: "Authrix Runtime Adapter",
         version: packageJson.version,
-        platform: process.platform,
-        mode: "backend",
+        platform,
+        mode: clientMode,
         instanceId: randomUUID(),
       },
-      role: "operator",
+      role,
       scopes: config.connectScopes,
+      device: {
+        id: deviceIdentity.deviceId,
+        publicKey: publicKeyRawBase64UrlFromPem(deviceIdentity.publicKeyPem),
+        signature: signDevicePayload(deviceIdentity.privateKeyPem, devicePayload),
+        signedAt,
+        nonce: connectNonce,
+      },
       auth:
         config.token || config.password
           ? {

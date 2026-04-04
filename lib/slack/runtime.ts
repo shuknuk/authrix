@@ -123,7 +123,7 @@ export async function monitorSlackThreadRun(input: {
 
   const replyText = buildSlackRunOutcomeReply({
     routedAgentId: input.routedAgentId,
-    status: settled.run.status === "failed" ? "failed" : settled.run.status === "running" ? "running" : "completed",
+    status: settled.run.status === "failed" ? "failed" : "completed",
     outputSummary: settled.run.outputSummary,
     error: settled.run.error,
     sessionId: input.sessionId,
@@ -135,7 +135,7 @@ export async function monitorSlackThreadRun(input: {
     agentId: input.routedAgentId,
     runId: input.runId,
     sessionId: input.sessionId,
-    status: settled.run.status === "queued" ? "running" : settled.run.status === "failed" ? "failed" : "completed",
+    status: settled.run.status,
     outputSummary: settled.run.outputSummary,
     error: settled.run.error,
     replyText,

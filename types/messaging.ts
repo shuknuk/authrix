@@ -1,5 +1,6 @@
 import type { AgentId } from "@/types/agents";
 import type { RouteDecision } from "@/types/models";
+import type { JobState } from "@/types/runtime";
 
 export type MessagingPlatform = "slack";
 export type RoutedSlackAgentId = Exclude<AgentId, "task">;
@@ -17,6 +18,10 @@ export interface SlackConversation {
   updatedAt: string;
   lastMessageAt: string;
   runtimeSessionId?: string;
+  runtimeRunCount?: number;
+  runtimeLastRunId?: string;
+  runtimeLastRunStatus?: JobState;
+  runtimeLastRunAt?: string;
 }
 
 export interface SlackMessageRecord {
@@ -46,6 +51,9 @@ export interface SlackDispatchRecord {
   delegationIds: string[];
   taskDispatchIds: string[];
   createdAt: string;
+  runtimeSessionId?: string;
+  runtimeRunId?: string;
+  runtimeRunStatus?: JobState;
 }
 
 export interface SlackDelegationRecord {

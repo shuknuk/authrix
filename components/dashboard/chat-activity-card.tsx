@@ -14,7 +14,7 @@ export function ChatActivityCard({
   return (
     <CardShell
       title="Messaging Surface"
-      description="Slack-bound conversations and specialist routing visibility for Authrix's messaging surface."
+      description="Slack-bound conversations and agent routing visibility for Authrix's chat-first operating model."
     >
       <div className="space-y-3">
         {conversations.length > 0 ? (
@@ -36,20 +36,34 @@ export function ChatActivityCard({
                       {conversation.channelId} and updated{" "}
                       {new Date(conversation.updatedAt).toLocaleString()}.
                     </p>
+                    {conversation.runtimeSessionId ? (
+                      <p className="mt-2 text-[11px] text-zinc-500">
+                        Runtime session {shortId(conversation.runtimeSessionId)}
+                        {conversation.runtimeLastRunStatus
+                          ? ` | last run ${conversation.runtimeLastRunStatus}`
+                          : ""}
+                        {conversation.runtimeRunCount
+                          ? ` | ${conversation.runtimeRunCount} run${conversation.runtimeRunCount === 1 ? "" : "s"}`
+                          : ""}
+                      </p>
+                    ) : null}
                     {latestDispatch ? (
                       <p className="mt-2 text-[11px] text-zinc-500">
                         Router: {latestDispatch.routeMode}
                         {latestDispatch.routeModel ? ` via ${latestDispatch.routeModel}` : ""}
+                        {latestDispatch.runtimeRunStatus
+                          ? ` | runtime ${latestDispatch.runtimeRunStatus}`
+                          : ""}
                         {latestDispatch.delegationIds.length > 0
-                          ? ` · ${latestDispatch.delegationIds.length} delegation(s)`
+                          ? ` | ${latestDispatch.delegationIds.length} delegation(s)`
                           : ""}
                         {latestDispatch.taskDispatchIds.length > 0
-                          ? ` · ${latestDispatch.taskDispatchIds.length} follow-up task(s)`
+                          ? ` | ${latestDispatch.taskDispatchIds.length} follow-up task(s)`
                           : ""}
                       </p>
                     ) : null}
                   </div>
-                  <span className="rounded-full border border-[#4D7EA8]/20 bg-[#4D7EA8]/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[#DCE9F5]/85">
+                  <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-100/80">
                     Slack
                   </span>
                 </div>
@@ -60,12 +74,15 @@ export function ChatActivityCard({
           <div className="rounded-[1.35rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-6">
             <p className="text-sm text-zinc-200">No Slack conversations yet.</p>
             <p className="mt-2 text-xs leading-5 text-slate-400">
-              Slack becomes Authrix&apos;s first professional messaging surface once the workspace is connected.
-              Routed conversations will appear here as soon as events start flowing.
+              Once events are connected, routed conversations will appear here.
             </p>
           </div>
         )}
       </div>
     </CardShell>
   );
+}
+
+function shortId(value: string): string {
+  return value.length > 10 ? `${value.slice(0, 10)}...` : value;
 }

@@ -43,6 +43,17 @@ export function SlackSetupCard() {
           </p>
         </div>
 
+        <div className="rounded-[1.35rem] border border-white/10 bg-white/5 px-4 py-4">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+            Interactivity endpoint
+          </p>
+          <p className="mt-2 text-sm text-zinc-100">`POST /api/slack/interactions`</p>
+          <p className="mt-2 text-xs leading-5 text-slate-400">
+            Use this as the Slack Interactivity Request URL so approval buttons and other
+            thread actions can resolve back into the same Authrix Slack thread.
+          </p>
+        </div>
+
         {steps.map((step) => (
           <div key={step.label} className="authrix-row px-4 py-4">
             <div className="flex items-center justify-between gap-3">

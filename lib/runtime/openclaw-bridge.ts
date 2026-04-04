@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type {
   JobStatus,
   RuntimeBridge,
@@ -89,7 +90,7 @@ export function createOpenClawBridge(): RuntimeBridge {
       sessionId?: string;
     }) {
       const start = Date.now();
-      const runtimeAgentId = config.defaultAgentId ?? request.agentId;
+      const runtimeAgentId = resolveRuntimeAgentId(request.agentId, config.defaultAgentId);
       const toolEvaluation = evaluateRuntimeRequestedTools(request.tools);
 
       if (toolEvaluation.blockedTools.length > 0) {
@@ -112,6 +113,7 @@ export function createOpenClawBridge(): RuntimeBridge {
           {
             agentId: runtimeAgentId,
             sessionId: request.sessionId,
+            idempotencyKey: `authrix-${request.agentId}-${randomUUID()}`,
             message: buildAgentExecutionMessage(
               request.agentId,
               request.input,
@@ -140,15 +142,53 @@ export function createOpenClawBridge(): RuntimeBridge {
     },
 
     async createSession(configRequest: SessionConfig) {
-      const response = await withOpenClawGateway(config, async (connection) =>
-        connection.request<OpenClawCreateSessionResponse>("sessions.create", {
-          key: configRequest.key,
-          agentId: configRequest.agentId ?? config.defaultAgentId,
-          label: configRequest.label,
-          model: configRequest.model,
-          parentSessionKey: configRequest.parentSessionKey,
-        })
+      const logicalAgentId = configRequest.agentId ?? config.defaultAgentId;
+      const resolvedAgentId = resolveRuntimeAgentId(
+        configRequest.agentId,
+        config.defaultAgentId
       );
+      let response: OpenClawCreateSessionResponse;
+
+      try {
+        response = await withOpenClawGateway(config, async (connection) =>
+          connection.request<OpenClawCreateSessionResponse>("sessions.create", {
+            key: configRequest.key,
+            agentId: resolvedAgentId,
+            label: configRequest.label,
+            model: configRequest.model,
+            parentSessionKey: configRequest.parentSessionKey,
+          })
+        );
+      } catch (error) {
+        if (!(error instanceof OpenClawGatewayRequestError) || !isLabelAlreadyInUseError(error)) {
+          throw error;
+        }
+
+        const existingSession = await withOpenClawGateway(config, async (connection) => {
+          const sessions = await connection.request<OpenClawListSessionsResponse>("sessions.list", {
+            limit: 50,
+            includeDerivedTitles: true,
+            label: configRequest.label,
+            agentId: resolvedAgentId,
+          });
+
+          return (sessions.sessions ?? []).find(
+            (entry) =>
+              entry.label === configRequest.label &&
+              (!resolvedAgentId || entry.agentId === resolvedAgentId)
+          );
+        });
+
+        if (!existingSession) {
+          throw error;
+        }
+
+        response = {
+          key: existingSession.key,
+          sessionId: existingSession.sessionId,
+          entry: existingSession,
+        };
+      }
 
       const key = response.key;
       const sessionId = response.sessionId ?? response.entry?.sessionId ?? key;
@@ -166,7 +206,8 @@ export function createOpenClawBridge(): RuntimeBridge {
         lastActiveAt: normalizeTimestamp(response.entry?.updatedAt),
         metadata: {
           openclawKey: key,
-          agentId: configRequest.agentId ?? config.defaultAgentId,
+          agentId: logicalAgentId,
+          runtimeAgentId: resolvedAgentId,
           model: configRequest.model,
           parentSessionKey: configRequest.parentSessionKey,
         },
@@ -267,6 +308,17 @@ export function createOpenClawBridge(): RuntimeBridge {
   return bridge;
 }
 
+function resolveRuntimeAgentId(
+  requestedAgentId: string | undefined,
+  defaultAgentId: string | undefined
+): string | undefined {
+  return defaultAgentId ?? requestedAgentId;
+}
+
+function isLabelAlreadyInUseError(error: OpenClawGatewayRequestError): boolean {
+  return /label already in use:/i.test(error.message);
+}
+
 function buildDisconnectedStatus(
   url: string,
   agentId: string | undefined,
@@ -299,6 +351,7 @@ function mapOpenClawSessionEntry(entry: OpenClawSessionEntry): Session {
     metadata: {
       openclawKey: entry.key,
       agentId: entry.agentId,
+      runtimeAgentId: entry.agentId,
       model: entry.modelOverride ?? entry.model,
       parentSessionKey: entry.parentSessionKey,
       childSessions: entry.childSessions ?? [],
