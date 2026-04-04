@@ -16,6 +16,7 @@ export interface SlackConversation {
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string;
+  runtimeSessionId?: string;
 }
 
 export interface SlackMessageRecord {

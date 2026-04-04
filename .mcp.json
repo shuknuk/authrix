@@ -1,0 +1,19 @@
+{
+  "mcpServers": {
+    "auth0": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@auth0/auth0-mcp-server",
+        "run"
+      ],
+      "capabilities": [
+        "tools"
+      ],
+      "env": {
+        "AUTH0_MCP_ANALYTICS": "false",
+        "DEBUG": "auth0-mcp"
+      }
+    }
+  }
+}

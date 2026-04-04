@@ -239,3 +239,36 @@ function matchesAny(input: string, patterns: string[]): boolean {
 function dedupeAgents<T>(items: T[]): T[] {
   return [...new Set(items)];
 }
+
+export function buildSlackRunOutcomeReply(input: {
+  routedAgentId: RoutedSlackAgentId;
+  status: "completed" | "failed" | "running";
+  outputSummary?: string;
+  error?: string;
+  sessionId: string;
+  runId: string;
+}): string {
+  const label = formatAgentLabel(input.routedAgentId);
+
+  if (input.status === "failed") {
+    return [
+      `*Authrix · ${label}*`,
+      input.error || "The run failed. Check the runtime logs for details.",
+      `Session: ${input.sessionId} | Run: ${input.runId}`,
+    ].join("\n");
+  }
+
+  if (input.status === "running") {
+    return [
+      `*Authrix · ${label}*`,
+      "Working on your request...",
+      `Session: ${input.sessionId} | Run: ${input.runId}`,
+    ].join("\n");
+  }
+
+  return [
+    `*Authrix · ${label}*`,
+    input.outputSummary || "Completed.",
+    `Session: ${input.sessionId} | Run: ${input.runId}`,
+  ].join("\n");
+}

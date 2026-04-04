@@ -15,6 +15,14 @@ export function getRuntimeBridge(): RuntimeBridge {
   return _bridge;
 }
 
+export function getBaseRuntimeBridge(): RuntimeBridge {
+  return getRuntimeBridge();
+}
+
+export function resetRuntimeBridge(): void {
+  _bridge = null;
+}
+
 export function setRuntimeBridge(bridge: RuntimeBridge): void {
   _bridge = bridge;
 }

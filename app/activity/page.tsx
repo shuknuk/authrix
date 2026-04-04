@@ -12,13 +12,15 @@ import { StatusPill } from "@/components/ui/status-pill";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 import { listSecurityEvents } from "@/lib/security/events";
+import { listRuntimeRuns } from "@/lib/runtime/store";
 
 export default async function ActivityPage() {
   await requireSession("/activity");
 
-  const [snapshot, securityEvents] = await Promise.all([
+  const [snapshot, securityEvents, runtimeRuns] = await Promise.all([
     getWorkspaceSnapshot(),
     listSecurityEvents(8),
+    listRuntimeRuns(8),
   ]);
   const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
 
@@ -81,7 +83,7 @@ export default async function ActivityPage() {
       >
         <div className="grid gap-4 xl:grid-cols-2">
           <SecurityEventsCard events={securityEvents} limit={8} />
-          <RuntimeRunsCard />
+          <RuntimeRunsCard runs={runtimeRuns} />
         </div>
       </SectionFrame>
     </div>

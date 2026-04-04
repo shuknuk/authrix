@@ -1525,3 +1525,54 @@ function sortByDateDesc<T>(field: keyof T) {
     new Date(String(right[field])).getTime() -
     new Date(String(left[field])).getTime();
 }
+
+export async function createLiveApprovalRequest(input: {
+  actionKind: string;
+  title: string;
+  description: string;
+  sourceAgent: string;
+  affectedSystem: string;
+  riskLevel: "low" | "medium" | "high";
+  relatedRecordIds: string[];
+  metadata?: Record<string, unknown>;
+}): Promise<{ approval: ApprovalRequest; proposedAction: ProposedAction } | null> {
+  const snapshot = await getWorkspaceSnapshot();
+  const now = new Date().toISOString();
+
+  const proposedAction: ProposedAction = {
+    id: `proposed-action-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    workspaceId: WORKSPACE_ID,
+    actionKind: input.actionKind,
+    title: input.title,
+    description: input.description,
+    targetSystem: input.affectedSystem,
+    riskLevel: input.riskLevel,
+    sourceAgentId: input.sourceAgent,
+    status: "proposed",
+    createdAt: now,
+    relatedRecordIds: [...input.relatedRecordIds],
+  };
+
+  const approval: ApprovalRequest = {
+    id: `approval-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    actionKind: input.actionKind,
+    title: input.title,
+    description: input.description,
+    sourceAgent: input.sourceAgent,
+    affectedSystem: input.affectedSystem,
+    riskLevel: input.riskLevel,
+    status: "pending",
+    requestedAt: now,
+    proposedActionId: proposedAction.id,
+    relatedRecordIds: [...input.relatedRecordIds],
+    executionResult: input.metadata ? JSON.stringify(input.metadata) : undefined,
+  };
+
+  await saveWorkspaceSnapshot({
+    ...snapshot,
+    proposedActions: [proposedAction, ...snapshot.proposedActions],
+    approvalRequests: [approval, ...snapshot.approvalRequests],
+  });
+
+  return { approval, proposedAction };
+}
