@@ -1,4 +1,5 @@
 import { CardShell } from "@/components/ui/card-shell";
+import { MetricTile } from "@/components/ui/metric-tile";
 import type { SuggestedTask } from "@/types/domain";
 
 interface TaskHealthCardProps {
@@ -24,18 +25,22 @@ export function TaskHealthCard({ tasks }: TaskHealthCardProps) {
     <CardShell
       title="Workflow Health"
       description="Ownership and follow-through quality across the persisted task set."
+      tone={overdueTasks.length > 0 ? "warning" : "default"}
     >
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4 border-y border-[var(--border)] py-4">
         {metrics.map((metric) => (
-          <div
+          <MetricTile
             key={metric.label}
-            className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
-          >
-            <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-              {metric.label}
-            </p>
-            <p className="mt-2 text-2xl font-semibold text-zinc-100">{metric.value}</p>
-          </div>
+            label={metric.label}
+            value={metric.value}
+            tone={
+              metric.label === "Overdue" && metric.value > 0
+                ? "warning"
+                : metric.label === "Missing owners" && metric.value > 0
+                  ? "danger"
+                  : "default"
+            }
+          />
         ))}
       </div>
     </CardShell>

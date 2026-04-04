@@ -1,5 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { TimelineEntry } from "@/types/domain";
 
 interface ActivityTimelineCardProps {
@@ -17,7 +18,12 @@ export function ActivityTimelineCard({
   return (
     <CardShell
       title="Activity Timeline"
-      description="Recent engineering, meeting, workflow, and operational events flowing into Authrix."
+      description="Recent engineering, meeting, workflow, and operational records flowing through the workspace."
+      actions={
+        visibleEntries.length > 0 ? (
+          <StatusPill tone="info">{visibleEntries.length} recent entries</StatusPill>
+        ) : null
+      }
     >
       {visibleEntries.length === 0 ? (
         <EmptyState
@@ -43,24 +49,22 @@ export function ActivityTimelineCard({
             return (
               <div
                 key={entry.id}
-                className="flex items-start gap-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
+                className="authrix-row authrix-hover-surface flex items-start gap-4 px-4 py-3"
               >
-                <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-zinc-600" />
+                <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-mono text-zinc-500">
-                      {entry.type}
-                    </span>
-                    <span className="text-xs text-zinc-600">
+                    <StatusPill size="sm">{entry.type}</StatusPill>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                       {new Date(entry.timestamp).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-zinc-200">{entry.title}</p>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500">
+                  <p className="mt-1 text-sm text-[var(--foreground)]">{entry.title}</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">
                     {entry.description}
                   </p>
                   {badges.length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-600">
+                    <div className="mt-2 flex flex-wrap gap-3 text-xs text-[var(--muted-foreground)]">
                       {badges.map((badge) => (
                         <span key={`${entry.id}-${badge}`}>{badge}</span>
                       ))}

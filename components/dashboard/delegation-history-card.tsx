@@ -22,11 +22,11 @@ export function DelegationHistoryCard({
               className="rounded-[1.35rem] border border-white/10 bg-white/5 px-4 py-4"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-100">
+                <span className="rounded-full bg-[#4D7EA8]/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[#DCE9F5]">
                   {formatAgentLabel(delegation.parentAgentId)}
                 </span>
                 <span className="text-[11px] text-zinc-500">to</span>
-                <span className="rounded-full bg-emerald-300/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-emerald-100">
+                <span className="rounded-full bg-[#6E9F78]/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[#DCE9DF]">
                   {formatAgentLabel(delegation.delegatedAgentId)}
                 </span>
                 <span className="text-[11px] text-zinc-500">

@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AuthrixLogo } from "@/components/brand/authrix-logo";
+import { DesertCrab } from "@/components/brand/desert-crab";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/connections", label: "Connections" },
-  { href: "/activity", label: "Activity" },
-  { href: "/tasks", label: "Tasks" },
-  { href: "/costs", label: "Costs" },
+  { href: "/dashboard", label: "Dashboard", icon: GridIcon },
+  { href: "/connections", label: "Connections", icon: ConnectionsIcon },
+  { href: "/activity", label: "Activity", icon: ActivityIcon },
+  { href: "/tasks", label: "Tasks", icon: TasksIcon },
+  { href: "/costs", label: "Costs", icon: CostsIcon },
 ];
 
 interface SidebarProps {
@@ -22,105 +24,158 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="border-b border-white/10 bg-[linear-gradient(180deg,rgba(8,12,24,0.96),rgba(9,15,28,0.92))] p-5 backdrop-blur-xl md:w-72 md:border-b-0 md:border-r md:p-6">
-      <div className="flex items-start justify-between gap-6 md:flex-col md:gap-8">
-        <div className="space-y-4">
-          <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-3 py-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan-300 via-teal-300 to-emerald-300 text-xs font-semibold text-slate-950">
-              AX
-            </span>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight text-zinc-50">Authrix</h1>
-              <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                Startup operations
-              </p>
+    <aside className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center border-t border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-xl md:static md:h-screen md:w-[260px] md:flex-col md:border-r md:border-t-0">
+      <div className="flex w-full items-center justify-between px-4 md:h-full md:flex-col md:items-stretch md:py-6 md:px-5">
+        {/* Logo */}
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2.5 text-[var(--foreground)] md:mb-8"
+        >
+          <div className="relative">
+            <AuthrixLogo className="h-5 w-5" />
+            {/* Small crab mascot */}
+            <div className="absolute -right-1 -top-1" aria-hidden="true">
+              <DesertCrab size="xs" variant="ghost" className="opacity-70" />
             </div>
           </div>
+          <div className="hidden md:block">
+            <p className="text-sm font-semibold">Authrix</p>
+            <p className="text-[11px] text-[var(--foreground-muted)]">Governed operations</p>
+          </div>
+        </Link>
 
-          <div className="rounded-[1.4rem] border border-white/10 bg-white/5 p-4">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
-              Control posture
-            </p>
-            <p className="mt-3 text-sm leading-6 text-slate-300">
-              Live oversight for engineering, docs, workflow, costs, and approvals.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em]">
-              <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-cyan-100/80">
-                Runtime aware
-              </span>
-              <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2.5 py-1 text-emerald-100/80">
-                Approval gated
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="text-right text-xs text-zinc-600 md:mt-auto md:w-full md:text-left">
+        {/* Navigation */}
+        <nav className="flex items-center gap-1 overflow-x-auto md:flex-col md:gap-1">
+          {navItems.map((item) => {
+            const isActive =
+              pathname === item.href || pathname.startsWith(item.href + "/");
+            const Icon = item.icon;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={[
+                  "flex min-w-fit items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all md:w-full md:px-3 md:py-2.5",
+                  isActive
+                    ? "bg-[var(--primary)]/10 text-[var(--primary)] font-medium"
+                    : "text-[var(--foreground-muted)] hover:bg-[var(--background-muted)] hover:text-[var(--foreground)]",
+                ].join(" ")}
+              >
+                <Icon className="h-4 w-4" />
+                <span className="hidden md:inline">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User Section */}
+        <div className="hidden md:mt-auto md:block">
           {user ? (
-            <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                Operator
+            <div className="space-y-3">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] p-3">
+                <p className="text-sm font-medium text-[var(--foreground)]">
+                  {user.name ?? "Authenticated user"}
+                </p>
+                <p className="mt-0.5 break-all text-xs text-[var(--foreground-muted)]">
+                  {user.email}
+                </p>
               </div>
-              <div className="mt-2 font-medium text-zinc-200">
-                {user.name ?? "Authenticated User"}
-              </div>
-              <div className="mt-1 break-all text-slate-500">{user.email}</div>
+
+              <a
+                href="/auth/logout"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--border)] px-3 py-2 text-sm text-[var(--foreground-muted)] transition-colors hover:bg-[var(--background-muted)] hover:text-[var(--foreground)]"
+              >
+                <LogoutIcon className="h-4 w-4" />
+                Sign out
+              </a>
             </div>
           ) : (
-            <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4 text-left text-slate-400">
-              <div className="text-[11px] uppercase tracking-[0.22em] text-slate-500">
-                Build
-              </div>
-              <div className="mt-2 font-medium text-zinc-200">v0.1.0-alpha</div>
-            </div>
+            <p className="text-xs text-[var(--foreground-muted)]">
+              Sign in to access workspace pages.
+            </p>
           )}
         </div>
       </div>
-
-      {user ? (
-        <>
-          <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 md:mt-8 md:flex-col md:gap-2 md:overflow-visible md:pb-0">
-            {navItems.map((item) => {
-              const isActive =
-                pathname === item.href || pathname.startsWith(item.href + "/");
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`group rounded-full border px-3 py-2.5 text-sm transition-all md:rounded-2xl ${
-                    isActive
-                      ? "border-cyan-300/25 bg-cyan-300/10 text-white shadow-[0_0_0_1px_rgba(103,232,249,0.08)]"
-                      : "border-white/5 bg-white/0 text-slate-400 hover:border-white/10 hover:bg-white/5 hover:text-zinc-200"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium">{item.label}</span>
-                    <span
-                      className={`text-[10px] uppercase tracking-[0.22em] ${
-                        isActive ? "text-cyan-100/75" : "text-slate-600 group-hover:text-slate-500"
-                      }`}
-                    >
-                      {item.href.replace("/", "") || "root"}
-                    </span>
-                  </div>
-                </Link>
-              );
-            })}
-          </nav>
-
-          <div className="mt-5 md:mt-8">
-            <a
-              href="/auth/logout"
-              className="inline-flex rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition hover:border-white/20 hover:bg-white/8 hover:text-white"
-            >
-              Sign out
-            </a>
-          </div>
-        </>
-      ) : (
-        <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/5 p-4 text-sm text-slate-400 md:mt-8">
-          Sign in to access the Authrix control tower.
-        </div>
-      )}
     </aside>
+  );
+}
+
+// Icon Components
+function GridIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+      />
+    </svg>
+  );
+}
+
+function ConnectionsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+      />
+    </svg>
+  );
+}
+
+function ActivityIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
+function TasksIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
+      />
+    </svg>
+  );
+}
+
+function CostsIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  );
+}
+
+function LogoutIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+      />
+    </svg>
   );
 }

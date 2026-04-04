@@ -164,3 +164,65 @@ export interface RuntimeBridge {
   }): Promise<string>;
   getJobStatus(jobId: string): Promise<JobStatus>;
 }
+
+// Runtime session/run records for persistence layer
+
+export type RuntimeSessionOrigin = "api" | "slack" | "web" | "system";
+
+export interface RuntimeSessionRecord {
+  id: string;
+  workspaceId: string;
+  label?: string;
+  createdAt: string;
+  lastActiveAt: string;
+  lastRunAt?: string;
+  origin: RuntimeSessionOrigin;
+  state: "active" | "paused" | "closed" | "error";
+  runCount: number;
+  messageCount: number;
+  lastError?: string;
+  metadata: Record<string, unknown>;
+}
+
+export type RuntimeRunRecord = {
+  id: string;
+  sessionId: string;
+  agentId: string;
+  provider: RuntimeProvider;
+  origin: RuntimeSessionOrigin;
+  status: JobState;
+  createdAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  inputSummary: string;
+  outputSummary?: string;
+  error?: string;
+  tools: string[];
+  metadata: Record<string, unknown>;
+};
+
+export interface RuntimeTranscriptEvent {
+  id: string;
+  sessionId: string;
+  runId?: string;
+  role: "system" | "user" | "assistant" | "tool";
+  type: "run_status" | "agent_input" | "agent_output" | "tool_call" | "tool_result" | "session_created" | "session_closed";
+  content: string;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+}
+
+// Runtime control events
+
+export type RuntimeControlEventType = "bridge_reset" | "mode_switch" | "health_check";
+
+export type RuntimeControlEventStatus = "succeeded" | "failed" | "pending";
+
+export interface RuntimeControlEvent {
+  id: string;
+  type: RuntimeControlEventType;
+  status: RuntimeControlEventStatus;
+  createdAt: string;
+  message: string;
+  metadata: Record<string, unknown>;
+}

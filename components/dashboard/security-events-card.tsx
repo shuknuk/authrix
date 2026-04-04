@@ -1,5 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { SecurityEvent } from "@/types/security";
 
 interface SecurityEventsCardProps {
@@ -17,6 +18,7 @@ export function SecurityEventsCard({
     <CardShell
       title="Security Events"
       description="Policy-blocked actions and runtime guardrail events are recorded here so operators can inspect what Authrix refused to do."
+      tone={visibleEvents.some((event) => event.level === "critical") ? "danger" : "default"}
     >
       {visibleEvents.length === 0 ? (
         <EmptyState
@@ -26,31 +28,29 @@ export function SecurityEventsCard({
       ) : (
         <div className="space-y-3">
           {visibleEvents.map((event) => (
-            <div
-              key={event.id}
-              className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
-            >
+            <div key={event.id} className="authrix-row px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] ${
+                <StatusPill
+                  tone={
                     event.level === "critical"
-                      ? "bg-red-900/30 text-red-300"
+                      ? "danger"
                       : event.level === "warning"
-                        ? "bg-amber-900/30 text-amber-300"
-                        : "bg-zinc-800 text-zinc-400"
-                  }`}
+                        ? "warning"
+                        : "neutral"
+                  }
+                  size="sm"
                 >
                   {event.level}
-                </span>
-                <span className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                </StatusPill>
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                   {event.category}
                 </span>
-                <span className="text-[11px] text-zinc-600">
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                   {new Date(event.timestamp).toLocaleString()}
                 </span>
               </div>
-              <p className="mt-2 text-sm font-medium text-zinc-200">{event.title}</p>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">{event.description}</p>
+              <p className="mt-2 text-sm font-medium text-[var(--foreground)]">{event.title}</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">{event.description}</p>
             </div>
           ))}
         </div>

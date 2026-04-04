@@ -1,5 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { SourceDocument } from "@/types/domain";
 
 interface SourceDocumentsCardProps {
@@ -26,25 +27,22 @@ export function SourceDocumentsCard({
       ) : (
         <div className="space-y-3">
           {visibleDocuments.map((document) => (
-            <div
-              key={document.id}
-              className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
-            >
+            <div key={document.id} className="authrix-row px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium text-zinc-200">{document.title}</p>
-                <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                <p className="text-sm font-medium text-[var(--foreground)]">{document.title}</p>
+                <StatusPill size="sm">
                   {document.documentType}
-                </span>
+                </StatusPill>
               </div>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">
                 {document.sourceSystem} · {new Date(document.createdAt).toLocaleString()}
               </p>
-              <p className="mt-2 text-xs leading-5 text-zinc-400">
+              <p className="mt-2 text-xs leading-5 text-[var(--muted-foreground)]">
                 {document.content.slice(0, 180)}
                 {document.content.length > 180 ? "..." : ""}
               </p>
               {document.participants.length > 0 ? (
-                <p className="mt-2 text-[11px] text-zinc-600">
+                <p className="mt-2 text-[11px] text-[var(--muted-foreground)]">
                   Participants: {document.participants.join(", ")}
                 </p>
               ) : null}

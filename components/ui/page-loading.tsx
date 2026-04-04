@@ -1,23 +1,23 @@
 export function PageLoading() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-3">
-        <div className="h-3 w-36 rounded-full bg-zinc-800" />
-        <div className="h-10 w-64 rounded-full bg-zinc-900" />
-        <div className="h-4 w-full max-w-2xl rounded-full bg-zinc-900" />
+    <div className="space-y-6 animate-pulse">
+      <div className="space-y-3 rounded-[24px] border border-[var(--border)] bg-[rgba(255,249,241,0.46)] px-5 py-6">
+        <div className="h-3 w-32 rounded-full bg-[var(--background-muted)]" />
+        <div className="h-11 w-72 rounded-full bg-[var(--sand)]" />
+        <div className="h-4 w-full max-w-2xl rounded-full bg-[var(--background-muted)]" />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {Array.from({ length: 4 }).map((_, index) => (
           <div
             key={index}
-            className="rounded-2xl border border-zinc-800 bg-zinc-900/80 p-6"
+            className="authrix-surface rounded-[var(--radius-md)] border p-5"
           >
-            <div className="mb-4 h-4 w-32 rounded-full bg-zinc-800" />
-            <div className="space-y-3">
-              <div className="h-4 w-full rounded-full bg-zinc-900" />
-              <div className="h-4 w-5/6 rounded-full bg-zinc-900" />
-              <div className="h-4 w-2/3 rounded-full bg-zinc-900" />
+            <div className="mb-4 h-4 w-40 rounded-full bg-[var(--background-muted)]" />
+            <div className="space-y-2.5">
+              <div className="h-3.5 w-full rounded-full bg-[var(--background-muted)]" />
+              <div className="h-3.5 w-11/12 rounded-full bg-[var(--background-muted)]" />
+              <div className="h-3.5 w-4/5 rounded-full bg-[var(--background-muted)]" />
             </div>
           </div>
         ))}

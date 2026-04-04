@@ -1,5 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { DecisionRecord } from "@/types/domain";
 
 interface DecisionLogCardProps {
@@ -26,18 +27,24 @@ export function DecisionLogCard({
       ) : (
         <div className="space-y-3">
           {visibleDecisions.map((decision) => (
-            <div
-              key={decision.id}
-              className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
-            >
+            <div key={decision.id} className="authrix-row px-4 py-3">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-sm font-medium text-zinc-200">{decision.title}</p>
-                <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                  {decision.status}
-                </span>
+                <p className="text-sm font-medium text-[var(--foreground)]">{decision.title}</p>
+                <StatusPill
+                  tone={
+                    decision.status === "accepted"
+                      ? "success"
+                      : decision.status === "superseded"
+                        ? "warning"
+                        : "neutral"
+                  }
+                  size="sm"
+                >
+                    {decision.status}
+                  </StatusPill>
               </div>
-              <p className="mt-2 text-xs leading-5 text-zinc-400">{decision.summary}</p>
-              <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-zinc-600">
+              <p className="mt-2 text-xs leading-5 text-[var(--muted-foreground)]">{decision.summary}</p>
+              <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-[var(--muted-foreground)]">
                 <span>{new Date(decision.createdAt).toLocaleDateString()}</span>
                 <span>{decision.participants.length} participants</span>
                 <span>{decision.relatedTaskIds.length} linked tasks</span>

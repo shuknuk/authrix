@@ -1,11 +1,30 @@
 import type { Metadata } from "next";
+import { Fraunces, JetBrains_Mono, Manrope } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/shell/sidebar";
+import { AppFrame } from "@/components/shell/app-frame";
 import { getOptionalSession } from "@/lib/auth/session";
+
+const ui = Manrope({
+  subsets: ["latin"],
+  variable: "--font-ui",
+  weight: ["400", "500", "600", "700"],
+});
+
+const heading = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  weight: ["500", "600", "700"],
+});
+
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-code",
+  weight: ["400", "500", "600"],
+});
 
 export const metadata: Metadata = {
   title: "Authrix",
-  description: "Secure autonomous operations platform for startup teams",
+  description: "Governed operations platform for engineering teams",
 };
 
 export default async function RootLayout({
@@ -16,25 +35,20 @@ export default async function RootLayout({
   const session = await getOptionalSession();
 
   return (
-    <html lang="en" className="dark">
-      <body className="antialiased">
-        <div className="relative flex min-h-screen flex-col overflow-hidden md:flex-row">
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,rgba(103,232,249,0.14),transparent_60%)]" />
-          <div className="pointer-events-none absolute right-0 top-24 h-72 w-72 rounded-full bg-[radial-gradient(circle,rgba(251,191,36,0.12),transparent_68%)] blur-3xl" />
-          <Sidebar
-            user={
-              session
-                ? {
-                    name: session.user.name ?? session.user.nickname,
-                    email: session.user.email,
-                  }
-                : null
-            }
-          />
-          <main className="relative flex-1 p-4 md:p-8">
-            <div className="mx-auto max-w-[1500px]">{children}</div>
-          </main>
-        </div>
+    <html lang="en">
+      <body className={`${ui.variable} ${heading.variable} ${mono.variable} antialiased`}>
+        <AppFrame
+          user={
+            session
+              ? {
+                  name: session.user.name ?? session.user.nickname,
+                  email: session.user.email,
+                }
+              : null
+          }
+        >
+          {children}
+        </AppFrame>
       </body>
     </html>
   );

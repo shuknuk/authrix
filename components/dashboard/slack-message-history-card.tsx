@@ -24,8 +24,8 @@ export function SlackMessageHistoryCard({
                 <span
                   className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${
                     message.direction === "incoming"
-                      ? "bg-cyan-300/10 text-cyan-100"
-                      : "bg-emerald-300/10 text-emerald-100"
+                      ? "bg-[#4D7EA8]/10 text-[#DCE9F5]"
+                      : "bg-[#6E9F78]/10 text-[#DCE9DF]"
                   }`}
                 >
                   {message.direction}

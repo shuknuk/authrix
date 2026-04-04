@@ -1,54 +1,841 @@
 @import "tailwindcss";
 
 :root {
-  color-scheme: dark;
-  --authrix-bg: #060816;
-  --authrix-bg-soft: #0b1220;
-  --authrix-panel: rgba(11, 18, 32, 0.72);
-  --authrix-panel-strong: rgba(10, 14, 27, 0.9);
-  --authrix-border: rgba(148, 163, 184, 0.14);
-  --authrix-text: #eef2ff;
-  --authrix-muted: #94a3b8;
-  --authrix-cyan: #67e8f9;
-  --authrix-mint: #6ee7b7;
-  --authrix-gold: #fbbf24;
-  --authrix-coral: #fb7185;
+  color-scheme: light;
+
+  /* Base desert palette - refined cream, sand, taupe, bronze */
+  --ink: #1a1612;
+  --ink-soft: #4a3f35;
+  --ink-muted: #7a6b5a;
+  --ivory: #faf7f2;
+  --cream: #f5f0e8;
+  --sand: #e8dfd3;
+  --sand-warm: #ded4c5;
+  --taupe: #b5a899;
+  --bronze: #a67c52;
+  --bronze-soft: #c9a86c;
+  --amber: #d4a574;
+  --clay: #8b6914;
+
+  /* Semantic tokens */
+  --background: var(--ivory);
+  --background-cream: var(--cream);
+  --background-sand: var(--sand);
+  --background-elevated: rgba(255, 253, 250, 0.92);
+  --background-muted: rgba(245, 240, 232, 0.88);
+  --background-sunken: rgba(238, 232, 224, 0.82);
+  --card: #ffffff;
+
+  --foreground: var(--ink);
+  --foreground-soft: var(--ink-soft);
+  --foreground-muted: var(--ink-muted);
+
+  --border: rgba(90, 75, 60, 0.12);
+  --border-strong: rgba(90, 75, 60, 0.22);
+  --border-subtle: rgba(90, 75, 60, 0.06);
+
+  /* Primary bronze accent */
+  --primary: var(--bronze);
+  --primary-soft: rgba(166, 124, 82, 0.12);
+  --primary-muted: rgba(166, 124, 82, 0.08);
+  --primary-border: rgba(166, 124, 82, 0.35);
+  --primary-foreground: #fffaf5;
+
+  /* Status colors */
+  --success: #5b8a72;
+  --success-soft: rgba(91, 138, 114, 0.12);
+  --success-border: rgba(91, 138, 114, 0.35);
+
+  --warning: #b8956a;
+  --warning-soft: rgba(184, 149, 106, 0.12);
+  --warning-border: rgba(184, 149, 106, 0.35);
+
+  --danger: #a65d52;
+  --danger-soft: rgba(166, 93, 82, 0.12);
+  --danger-border: rgba(166, 93, 82, 0.35);
+
+  --info: #6b8fa8;
+  --info-soft: rgba(107, 143, 168, 0.12);
+  --info-border: rgba(107, 143, 168, 0.35);
+
+  /* Shadows - softer, more refined */
+  --shadow-sm: 0 1px 2px rgba(26, 22, 18, 0.04), 0 1px 3px rgba(26, 22, 18, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(26, 22, 18, 0.04), 0 2px 4px -1px rgba(26, 22, 18, 0.02);
+  --shadow-lg: 0 10px 15px -3px rgba(26, 22, 18, 0.05), 0 4px 6px -2px rgba(26, 22, 18, 0.025);
+  --shadow-xl: 0 20px 25px -5px rgba(26, 22, 18, 0.06), 0 10px 10px -5px rgba(26, 22, 18, 0.02);
+  --shadow-glow: 0 0 40px rgba(166, 124, 82, 0.08);
+
+  /* Border radius - slightly smaller, more refined */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Typography */
+  --font-sans: var(--font-ui), "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-heading), "Fraunces", ui-serif, Georgia, serif;
+  --font-mono: var(--font-code), "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* Base styles */
 html {
-  background:
-    radial-gradient(circle at 18% 18%, rgba(103, 232, 249, 0.16), transparent 26%),
-    radial-gradient(circle at 82% 10%, rgba(251, 191, 36, 0.12), transparent 22%),
-    radial-gradient(circle at 72% 78%, rgba(110, 231, 183, 0.1), transparent 28%),
-    linear-gradient(180deg, #060816 0%, #09101d 48%, #05070f 100%);
-}
-
-html::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(148, 163, 184, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(circle at center, black, transparent 80%);
-  opacity: 0.28;
+  scroll-behavior: smooth;
 }
 
 body {
   min-height: 100vh;
-  color: var(--authrix-text);
-  background:
-    radial-gradient(circle at top, rgba(12, 18, 31, 0.84), transparent 42%),
-    transparent;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  background: var(--background);
+  letter-spacing: -0.01em;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
-  border-color: var(--authrix-border);
+  border-color: var(--border);
 }
 
 ::selection {
-  background: rgba(103, 232, 249, 0.24);
-  color: #f8fafc;
+  background: var(--primary-soft);
+  color: var(--foreground);
+}
+
+/* Typography */
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--foreground);
+}
+
+code, pre, .font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Links and buttons */
+a, button {
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--taupe);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted);
+}
+
+/* ============================================
+   APP SHELL STYLES
+   ============================================ */
+
+.authrix-app {
+  min-height: 100vh;
+  background: var(--cream);
+}
+
+.authrix-app-shell {
+  display: flex;
+  min-height: 100vh;
+  background: linear-gradient(135deg, var(--ivory) 0%, var(--cream) 50%, var(--sand) 100%);
+}
+
+.authrix-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: rgba(255, 253, 250, 0.95);
+  border-right: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+}
+
+.authrix-main {
+  flex: 1;
+  min-height: 100vh;
+  padding: var(--space-8);
+  overflow-x: hidden;
+}
+
+/* ============================================
+   CARD & SURFACE STYLES
+   ============================================ */
+
+.authrix-surface {
+  background: var(--background-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.authrix-card {
+  background: var(--background-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.authrix-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
+}
+
+.authrix-card-accent {
+  border-color: var(--primary-border);
+  background: linear-gradient(135deg, var(--background-elevated) 0%, rgba(166, 124, 82, 0.04) 100%);
+}
+
+/* ============================================
+   TYPOGRAPHY UTILITIES
+   ============================================ */
+
+.authrix-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--foreground-muted);
+}
+
+.authrix-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--foreground-muted);
+}
+
+/* ============================================
+   STATUS & BADGE STYLES
+   ============================================ */
+
+.authrix-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+}
+
+.authrix-badge--default {
+  background: var(--background-muted);
+  border-color: var(--border);
+  color: var(--foreground-soft);
+}
+
+.authrix-badge--primary {
+  background: var(--primary-soft);
+  border-color: var(--primary-border);
+  color: var(--primary);
+}
+
+.authrix-badge--success {
+  background: var(--success-soft);
+  border-color: var(--success-border);
+  color: var(--success);
+}
+
+.authrix-badge--warning {
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+  color: var(--clay);
+}
+
+.authrix-badge--danger {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+/* ============================================
+   BUTTON STYLES
+   ============================================ */
+
+.authrix-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.authrix-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.authrix-btn--primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+
+.authrix-btn--primary:hover {
+  background: color-mix(in srgb, var(--primary) 90%, black);
+  border-color: color-mix(in srgb, var(--primary) 90%, black);
+}
+
+.authrix-btn--secondary {
+  background: var(--background-elevated);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.authrix-btn--secondary:hover {
+  background: var(--background-muted);
+  border-color: var(--border-strong);
+}
+
+.authrix-btn--ghost {
+  background: transparent;
+  color: var(--foreground-soft);
+}
+
+.authrix-btn--ghost:hover {
+  background: var(--background-muted);
+  color: var(--foreground);
+}
+
+/* ============================================
+   HERO SECTION STYLES (PUBLIC)
+   ============================================ */
+
+.authrix-hero {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.authrix-hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.authrix-hero__bg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.authrix-hero__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(26, 22, 18, 0.15) 0%,
+    rgba(26, 22, 18, 0.05) 50%,
+    rgba(26, 22, 18, 0.25) 100%
+  );
+  z-index: 1;
+}
+
+.authrix-hero__content {
+  position: relative;
+  z-index: 2;
+  max-width: 800px;
+  padding: 2rem;
+  text-align: center;
+}
+
+.authrix-hero__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 250, 245, 0.85);
+  margin-bottom: 1.5rem;
+}
+
+.authrix-hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  font-weight: 500;
+  line-height: 1.05;
+  color: #fffaf5;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 2px 20px rgba(26, 22, 18, 0.2);
+}
+
+.authrix-hero__subtitle {
+  font-size: clamp(1rem, 1.5vw, 1.25rem);
+  line-height: 1.7;
+  color: rgba(255, 250, 245, 0.85);
+  max-width: 560px;
+  margin: 0 auto 2.5rem;
+}
+
+.authrix-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.authrix-hero__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.5rem;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: var(--radius-full);
+  transition: all 200ms ease;
+}
+
+.authrix-hero__btn--primary {
+  background: rgba(255, 250, 245, 0.95);
+  color: var(--ink);
+  border: 1px solid rgba(255, 250, 245, 0.5);
+}
+
+.authrix-hero__btn--primary:hover {
+  background: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(26, 22, 18, 0.15);
+}
+
+.authrix-hero__btn--secondary {
+  background: rgba(26, 22, 18, 0.3);
+  color: rgba(255, 250, 245, 0.95);
+  border: 1px solid rgba(255, 250, 245, 0.2);
+  backdrop-filter: blur(8px);
+}
+
+.authrix-hero__btn--secondary:hover {
+  background: rgba(26, 22, 18, 0.4);
+  border-color: rgba(255, 250, 245, 0.3);
+}
+
+/* ============================================
+   SECTION STYLES (PUBLIC)
+   ============================================ */
+
+.authrix-section {
+  padding: 6rem 1.5rem;
+}
+
+.authrix-section__header {
+  max-width: 600px;
+  margin-bottom: 3rem;
+}
+
+.authrix-section__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--foreground-muted);
+  margin-bottom: 1rem;
+}
+
+.authrix-section__title {
+  font-family: var(--font-display);
+  font-size: clamp(1.75rem, 3.5vw, 2.5rem);
+  font-weight: 500;
+  line-height: 1.15;
+  margin-bottom: 1rem;
+}
+
+.authrix-section__desc {
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--foreground-muted);
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Stagger animation delays */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* ============================================
+   TABLE STYLES
+   ============================================ */
+
+.authrix-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.authrix-table th {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--foreground-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.authrix-table td {
+  padding: 1rem;
+  font-size: 14px;
+  color: var(--foreground-soft);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.authrix-table tr:last-child td {
+  border-bottom: none;
+}
+
+.authrix-table tbody tr:hover {
+  background: var(--background-muted);
+}
+
+/* ============================================
+   INPUT STYLES
+   ============================================ */
+
+.authrix-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 14px;
+  color: var(--foreground);
+  background: var(--background-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.authrix-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.authrix-input::placeholder {
+  color: var(--foreground-muted);
+}
+
+/* ============================================
+   NAV STYLES (PUBLIC)
+   ============================================ */
+
+.authrix-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  transition: all 200ms ease;
+}
+
+.authrix-nav--transparent {
+  background: transparent;
+}
+
+.authrix-nav--scrolled {
+  background: rgba(250, 247, 242, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+}
+
+.authrix-nav__logo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+.authrix-nav__links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.authrix-nav__link {
+  font-size: 14px;
+  color: var(--foreground-soft);
+  transition: color 150ms ease;
+}
+
+.authrix-nav__link:hover {
+  color: var(--foreground);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .authrix-main {
+    padding: var(--space-4);
+  }
+
+  .authrix-sidebar {
+    width: 100%;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    border-right: none;
+    border-top: 1px solid var(--border);
+  }
+
+  .authrix-section {
+    padding: 4rem 1rem;
+  }
+}
+
+/* ============================================
+   DARK MODE - Desert at Night
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    /* Inverted dark palette - warm desert at night */
+    --ink: #f5f0e8;
+    --ink-soft: #c9beb0;
+    --ink-muted: #9a8b7a;
+
+    --ivory: #1a1816;
+    --cream: #24211f;
+    --sand: #2d2a26;
+    --sand-warm: #36322d;
+    --taupe: #5c544d;
+
+    --bronze: #c9a86c; /* Keep warm, slightly brighter */
+    --bronze-soft: #d4b87a;
+    --amber: #d4a574;
+    --clay: #b8942a;
+
+    /* Semantic tokens - inverted */
+    --background: var(--ivory);
+    --background-cream: var(--cream);
+    --background-sand: var(--sand);
+    --background-elevated: rgba(45, 42, 38, 0.95);
+    --background-muted: rgba(36, 33, 31, 0.9);
+    --background-sunken: rgba(26, 24, 22, 0.95);
+    --card: #2d2a26;
+
+    --foreground: var(--ink);
+    --foreground-soft: var(--ink-soft);
+    --foreground-muted: var(--ink-muted);
+
+    --border: rgba(200, 184, 168, 0.1);
+    --border-strong: rgba(200, 184, 168, 0.2);
+    --border-subtle: rgba(200, 184, 168, 0.05);
+
+    /* Primary bronze accent - slightly brighter for dark */
+    --primary: var(--bronze);
+    --primary-soft: rgba(201, 168, 108, 0.15);
+    --primary-muted: rgba(201, 168, 108, 0.1);
+    --primary-border: rgba(201, 168, 108, 0.4);
+    --primary-foreground: #1a1816;
+
+    /* Status colors - adjusted for dark */
+    --success: #6b9e82;
+    --success-soft: rgba(107, 158, 130, 0.15);
+    --success-border: rgba(107, 158, 130, 0.4);
+
+    --warning: #c9a86c;
+    --warning-soft: rgba(201, 168, 108, 0.15);
+    --warning-border: rgba(201, 168, 108, 0.4);
+
+    --danger: #c47a6e;
+    --danger-soft: rgba(196, 122, 110, 0.15);
+    --danger-border: rgba(196, 122, 110, 0.4);
+
+    --info: #7ba3c4;
+    --info-soft: rgba(123, 163, 196, 0.15);
+    --info-border: rgba(123, 163, 196, 0.4);
+
+    /* Shadows for dark mode - softer, less intense */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.6), 0 10px 10px -5px rgba(0, 0, 0, 0.3);
+    --shadow-glow: 0 0 40px rgba(201, 168, 108, 0.15);
+  }
+
+  /* Scrollbar adjustments for dark mode */
+  ::-webkit-scrollbar-thumb {
+    background: var(--taupe);
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--ink-muted);
+  }
+
+  /* Selection in dark mode */
+  ::selection {
+    background: var(--primary-soft);
+    color: var(--foreground);
+  }
+
+  /* App shell dark mode adjustments */
+  .authrix-app-shell {
+    background: linear-gradient(135deg, var(--ivory) 0%, var(--cream) 50%, var(--sand) 100%);
+  }
+
+  .authrix-sidebar {
+    background: rgba(36, 33, 31, 0.98);
+  }
+
+  /* Hero section dark mode */
+  .authrix-hero {
+    color: var(--foreground);
+  }
+
+  .authrix-hero__title {
+    color: #fffaf5;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .authrix-hero__subtitle {
+    color: rgba(255, 250, 245, 0.85);
+  }
+
+  /* Nav dark mode */
+  .authrix-nav--scrolled {
+    background: rgba(36, 33, 31, 0.95);
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* Table hover in dark mode */
+  .authrix-table tbody tr:hover {
+    background: var(--background-muted);
+  }
+
+  /* Input focus in dark mode */
+  .authrix-input:focus {
+    box-shadow: 0 0 0 3px var(--primary-soft);
+  }
+
+  /* Row and hover surface utilities */
+.authrix-row {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--background);
+  transition: all 150ms ease;
+}
+
+.authrix-hover-surface:hover {
+  background: var(--background-muted);
+  border-color: var(--border-strong);
+}
+
+/* Utility - force background to use card color */
+  .dark-bg-card {
+    background: var(--card) !important;
+  }
+
+  /* Override hardcoded white backgrounds in dark mode */
+  [class*="bg-white"],
+  [style*="background: white"],
+  [style*="background-color: white"],
+  [style*="background:#fff"],
+  [style*="background-color:#fff"] {
+    background-color: var(--card) !important;
+  }
+
+  /* Also fix text color on cards */
+  [class*="text-[var(--ink)]"] {
+    color: var(--foreground) !important;
+  }
 }

@@ -1,61 +1,64 @@
+import { SPECIALIST_META, SpecialistCrab, type SpecialistRole } from "@/components/brand/specialist-crab";
 import { CardShell } from "@/components/ui/card-shell";
 
-const AGENTS = [
+const AGENTS: {
+  name: string;
+  role: string;
+  description: string;
+  specialist: SpecialistRole;
+}[] = [
   {
     name: "Engineer",
     role: "technical change awareness",
     description:
       "Summarizes shipped work, highlights architecture shifts, and turns raw GitHub activity into operational context.",
-    accent:
-      "border-cyan-300/20 bg-cyan-300/10 text-cyan-100",
+    specialist: "engineer",
   },
   {
     name: "Docs",
     role: "knowledge capture",
     description:
       "Transforms meeting notes, transcripts, and sync summaries into durable records, decisions, and documentation updates.",
-    accent:
-      "border-emerald-300/20 bg-emerald-300/10 text-emerald-100",
+    specialist: "docs",
   },
   {
     name: "Workflow",
     role: "ownership and follow-through",
     description:
       "Extracts next steps, suggests owners, and keeps startup work from drifting after decisions are made.",
-    accent:
-      "border-amber-300/20 bg-amber-300/10 text-amber-100",
+    specialist: "workflow",
   },
   {
     name: "DevOps",
     role: "cost and operational risk",
     description:
       "Tracks spend posture, detects drift, and explains operational anomalies against visible product activity.",
-    accent:
-      "border-fuchsia-300/20 bg-fuchsia-300/10 text-fuchsia-100",
+    specialist: "devops",
   },
 ];
 
 export function AgentRosterCard() {
   return (
     <CardShell
-      title="Operational Team"
-      description="Authrix behaves like a startup operations system with specialized internal agents over one shared workspace."
+      title="Specialist Roles"
+      description="Authrix keeps four specialist viewpoints in one workspace so review stays structured and ownership stays visible."
     >
       <div className="grid gap-3 md:grid-cols-2">
         {AGENTS.map((agent) => (
           <div
             key={agent.name}
-            className="rounded-[1.35rem] border border-white/10 bg-white/5 p-4"
+            className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--background)] p-4"
           >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-base font-semibold text-zinc-50">{agent.name}</p>
-              <span
-                className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${agent.accent}`}
-              >
+              <div className="flex items-center gap-3">
+                <SpecialistCrab role={agent.specialist} />
+                <p className="text-base font-semibold text-[var(--foreground)]">{agent.name}</p>
+              </div>
+              <span className={`rounded-[var(--radius-sm)] border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${SPECIALIST_META[agent.specialist].panel} ${SPECIALIST_META[agent.specialist].tint}`}>
                 {agent.role}
               </span>
             </div>
-            <p className="mt-3 text-sm leading-6 text-slate-300/90">{agent.description}</p>
+            <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">{agent.description}</p>
           </div>
         ))}
       </div>

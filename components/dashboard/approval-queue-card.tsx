@@ -1,5 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill } from "@/components/ui/status-pill";
 import { getActionPolicy } from "@/lib/security/action-policy";
 import type { ApprovalRequest } from "@/types/domain";
 
@@ -8,86 +9,93 @@ interface ApprovalQueueCardProps {
   limit?: number;
 }
 
+function riskTone(level: ApprovalRequest["riskLevel"]) {
+  if (level === "high") {
+    return "danger" as const;
+  }
+
+  if (level === "medium") {
+    return "warning" as const;
+  }
+
+  return "neutral" as const;
+}
+
+function statusTone(status: ApprovalRequest["status"]) {
+  if (status === "approved") {
+    return "success" as const;
+  }
+
+  if (status === "rejected") {
+    return "danger" as const;
+  }
+
+  return "warning" as const;
+}
+
 export function ApprovalQueueCard({
   approvals,
   limit,
 }: ApprovalQueueCardProps) {
-  const visibleApprovals =
-    typeof limit === "number" ? approvals.slice(0, limit) : approvals;
-  const pendingCount = approvals.filter(
-    (approval) => approval.status === "pending"
-  ).length;
+  const visibleApprovals = typeof limit === "number" ? approvals.slice(0, limit) : approvals;
+  const pendingCount = approvals.filter((approval) => approval.status === "pending").length;
 
   return (
     <CardShell
       title="Approval Queue"
-      description="Every write action is proposed first, then gated behind review."
-      badge={
-        pendingCount > 0 ? (
-          <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-orange-600 px-2 text-xs font-semibold text-white">
-            {pendingCount}
-          </span>
-        ) : null
-      }
+      description="Display-first governance queue. Proposed writes remain here until a human decision is recorded."
+      tone="warning"
+      actions={pendingCount > 0 ? <StatusPill tone="warning">{pendingCount} pending</StatusPill> : null}
     >
       {visibleApprovals.length === 0 ? (
         <EmptyState
           title="No approvals waiting"
-          description="Low-risk analysis can run automatically. Proposed writes will appear here for review."
+          description="New write proposals will appear here with risk and policy context."
         />
       ) : (
-        <div className="space-y-3">
-          {visibleApprovals.map((approval) => (
-            (() => {
-              const policy = getActionPolicy(approval.actionKind);
+        <div className="overflow-x-auto rounded-[12px] border border-[var(--border)] bg-[var(--background)]">
+          <table className="min-w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                <th className="px-4 py-3 font-medium">Action</th>
+                <th className="px-4 py-3 font-medium">Tier</th>
+                <th className="px-4 py-3 font-medium">Risk</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleApprovals.map((approval) => {
+                const policy = getActionPolicy(approval.actionKind);
 
-              return (
-                <div
-                  key={approval.id}
-                  className="flex items-start justify-between gap-3 rounded-[1.25rem] border border-white/8 bg-slate-950/45 px-4 py-3"
-                >
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-zinc-100">
-                        {approval.title}
+                return (
+                  <tr key={approval.id} className="border-t border-[var(--border)] align-top first:border-t-0">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-[var(--foreground-strong)]">{approval.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">
+                        {approval.description}
                       </p>
-                      <span className="rounded-full border border-white/8 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                        {policy.executionTier}
-                      </span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] ${
-                          approval.riskLevel === "high"
-                            ? "bg-red-900/30 text-red-300"
-                            : approval.riskLevel === "medium"
-                              ? "bg-amber-900/30 text-amber-300"
-                              : "bg-zinc-800 text-zinc-400"
-                        }`}
-                      >
+                      <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">
+                        {approval.sourceAgent} · {approval.affectedSystem}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
+                      {policy.executionTier}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusPill tone={riskTone(approval.riskLevel)} size="sm">
                         {approval.riskLevel}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {approval.sourceAgent} | {approval.affectedSystem}
-                    </p>
-                    <p className="mt-2 max-w-xl text-xs leading-5 text-slate-400">
-                      {approval.description}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full px-3 py-1 text-xs ${
-                      approval.status === "pending"
-                        ? "bg-orange-900/30 text-orange-400"
-                        : approval.status === "approved"
-                          ? "bg-green-900/30 text-green-400"
-                          : "bg-red-900/30 text-red-400"
-                    }`}
-                  >
-                    {approval.status}
-                  </span>
-                </div>
-              );
-            })()
-          ))}
+                      </StatusPill>
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusPill tone={statusTone(approval.status)} size="sm">
+                        {approval.status}
+                      </StatusPill>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </CardShell>

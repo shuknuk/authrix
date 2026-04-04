@@ -9,52 +9,51 @@ export function ModelLayerCard({ status }: ModelLayerCardProps) {
   return (
     <CardShell
       title="Model Layer"
-      description="Per-agent default models, routing posture, and the current hosted provider boundary for Authrix's LLM-backed execution path."
+      description="Per-specialist default models, routing posture, and the current provider boundary for Authrix's model-backed execution path."
     >
       <div className="space-y-4">
-        <div className="rounded-[1.35rem] border border-white/10 bg-white/5 px-4 py-4">
+        <div className="authrix-row px-4 py-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-zinc-300">
+            <span className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background-muted)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
               {status.provider}
             </span>
             <span
-              className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] ${
-                status.configured
-                  ? "bg-emerald-300/10 text-emerald-100"
-                  : "bg-amber-300/10 text-amber-100"
-              }`}
+              className="rounded-[var(--radius-sm)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em]"
+              style={{
+                color: status.configured ? "var(--success)" : "var(--warning)",
+                background: status.configured
+                  ? "color-mix(in srgb, var(--success) 8%, transparent)"
+                  : "color-mix(in srgb, var(--warning) 8%, transparent)",
+              }}
             >
               {status.configured ? "Configured" : "Fallback"}
             </span>
-            <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-100/80">
+            <span className="rounded-[var(--radius-sm)] border border-[var(--primary-border)] bg-[color:color-mix(in_srgb,var(--primary)_8%,transparent)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--primary)]">
               Router: {status.routerMode}
             </span>
           </div>
-          <p className="mt-3 text-sm leading-6 text-slate-300/90">{status.description}</p>
+          <p className="mt-3 text-sm leading-6 text-[var(--foreground)]/92">{status.description}</p>
           {status.baseUrl ? (
-            <p className="mt-3 text-xs text-zinc-500">Provider base URL: {status.baseUrl}</p>
+            <p className="mt-3 text-xs text-[var(--muted-foreground)]">Provider base URL: {status.baseUrl}</p>
           ) : null}
           {status.routerModel ? (
-            <p className="mt-2 text-xs text-zinc-500">Router model: {status.routerModel}</p>
+            <p className="mt-2 text-xs text-[var(--muted-foreground)]">Router model: {status.routerModel}</p>
           ) : null}
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           {status.agentConfigs.map((config) => (
-            <div
-              key={config.agentId}
-              className="rounded-[1.35rem] border border-white/10 bg-white/5 px-4 py-4"
-            >
+            <div key={config.agentId} className="authrix-row px-4 py-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-zinc-100">{config.roleLabel}</p>
-                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-zinc-300">
+                <p className="text-sm font-medium text-[var(--foreground)]">{config.roleLabel}</p>
+                <span className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background-muted)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                   {config.executionProfile}
                 </span>
               </div>
-              <p className="mt-3 text-xs uppercase tracking-[0.16em] text-zinc-500">
+              <p className="mt-3 text-xs uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
                 Default model
               </p>
-              <p className="mt-2 text-sm text-zinc-100">{config.defaultModel}</p>
+              <p className="mt-2 text-sm text-[var(--foreground)]">{config.defaultModel}</p>
             </div>
           ))}
         </div>
