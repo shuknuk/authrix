@@ -1,5 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { CostReport } from "@/types/domain";
 
 interface CostRiskCardProps {
@@ -7,89 +8,106 @@ interface CostRiskCardProps {
   compact?: boolean;
 }
 
+function riskTone(level: CostReport["riskLevel"]) {
+  if (level === "high") {
+    return "danger" as const;
+  }
+
+  if (level === "medium") {
+    return "warning" as const;
+  }
+
+  return "success" as const;
+}
+
 export function CostRiskCard({
   report,
   compact = false,
 }: CostRiskCardProps) {
-  const riskBadgeClass =
-    report.riskLevel === "high"
-      ? "bg-red-900/30 text-red-400"
-      : report.riskLevel === "medium"
-        ? "bg-yellow-900/30 text-yellow-400"
-        : "bg-green-900/30 text-green-400";
-
   return (
     <CardShell
       title="API Spend / Risk"
-      description="Weekly spend visibility with per-service trends and anomaly signals."
-      badge={
-        <span className={`rounded-full px-3 py-1 text-xs ${riskBadgeClass}`}>
-          {report.riskLevel} risk
-        </span>
+      description="Weekly spend posture with breakdown and anomaly context."
+      tone={riskTone(report.riskLevel) === "success" ? "default" : riskTone(report.riskLevel)}
+      meta={
+        <>
+          <StatusPill>{report.currency}</StatusPill>
+          <StatusPill tone="info">Updated {new Date(report.generatedAt).toLocaleDateString()}</StatusPill>
+        </>
       }
+      actions={<StatusPill tone={riskTone(report.riskLevel)}>{report.riskLevel} risk</StatusPill>}
     >
-      <div className="mb-5 flex items-end gap-3 rounded-[1.4rem] border border-white/8 bg-white/5 px-4 py-4">
-        <span className="text-3xl font-semibold text-zinc-50">
-          ${report.totalSpend.toFixed(2)}
-        </span>
-        <span className="text-xs uppercase tracking-wide text-slate-500">
-          {report.currency} this week
-        </span>
-      </div>
+      <p className="text-4xl font-semibold text-[var(--foreground-strong)]">
+        ${report.totalSpend.toFixed(2)}
+      </p>
 
       {report.breakdown.length === 0 ? (
-        <EmptyState
-          title="No spend data available"
-          description="Add billing sources or keep using the mock dataset to populate cost reporting."
-        />
+        <div className="mt-4">
+          <EmptyState
+            title="No spend data available"
+            description="Keep mock cost data on, or connect billing sources to populate this report."
+          />
+        </div>
       ) : (
-        <div className="space-y-3">
-          {report.breakdown.map((item) => (
-            <div
-              key={item.service}
-              className="flex items-center justify-between rounded-[1.2rem] border border-white/8 bg-slate-950/45 px-4 py-3 text-sm"
-            >
-              <span className="text-zinc-200">{item.service}</span>
-              <div className="flex items-center gap-3">
-                <span
-                  className={`text-xs ${
-                    item.trend === "up"
-                      ? "text-red-400"
-                      : item.trend === "down"
-                        ? "text-green-400"
-                        : "text-zinc-500"
-                  }`}
-                >
-                  {item.change > 0 ? "+" : ""}
-                  {item.change.toFixed(1)}%
-                </span>
-                <span className="w-20 text-right font-medium text-zinc-200">
-                  ${item.amount.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          ))}
+        <div className="mt-4 overflow-x-auto rounded-[12px] border border-[var(--border)] bg-[var(--background)]">
+          <table className="min-w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                <th className="px-4 py-3 font-medium">Service</th>
+                <th className="px-4 py-3 font-medium">Change</th>
+                <th className="px-4 py-3 font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.breakdown.map((item) => (
+                <tr key={item.service} className="border-t border-[var(--border)] first:border-t-0">
+                  <td className="px-4 py-3 font-medium text-[var(--foreground)]">{item.service}</td>
+                  <td
+                    className={`px-4 py-3 text-xs ${
+                      item.trend === "up"
+                        ? "text-[var(--danger)]"
+                        : item.trend === "down"
+                          ? "text-[var(--success)]"
+                          : "text-[var(--muted-foreground)]"
+                    }`}
+                  >
+                    {item.change > 0 ? "+" : ""}
+                    {item.change.toFixed(1)}%
+                  </td>
+                  <td className="px-4 py-3 text-sm text-[var(--foreground)]">${item.amount.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
       {!compact ? (
-        <div className="mt-5">
-          <p className="text-sm leading-6 text-slate-300/90">{report.summary}</p>
+        <div className="mt-4 space-y-3">
+          <p className="text-sm leading-6 text-[var(--muted-foreground)]">{report.summary}</p>
           {report.anomalies.length > 0 ? (
-            <div className="mt-4 space-y-3">
+            <div className="space-y-2">
               {report.anomalies.map((anomaly) => (
                 <div
                   key={`${anomaly.service}-${anomaly.detectedAt}`}
-                  className={`rounded-xl border px-4 py-3 text-sm ${
-                    anomaly.severity === "high"
-                      ? "border-red-800/30 bg-red-900/10 text-red-300"
-                      : anomaly.severity === "medium"
-                        ? "border-yellow-800/30 bg-yellow-900/10 text-yellow-300"
-                        : "border-zinc-700/30 bg-zinc-800/50 text-zinc-400"
-                  }`}
+                  className="rounded-[10px] border px-3 py-2.5"
+                  style={{
+                    borderColor:
+                      anomaly.severity === "high"
+                        ? "var(--danger-border)"
+                        : anomaly.severity === "medium"
+                          ? "var(--warning-border)"
+                          : "var(--border)",
+                    background:
+                      anomaly.severity === "high"
+                        ? "var(--danger-soft)"
+                        : anomaly.severity === "medium"
+                          ? "var(--warning-soft)"
+                          : "var(--background)",
+                  }}
                 >
-                  <div className="font-medium">{anomaly.service}</div>
-                  <p className="mt-1 text-xs leading-5 opacity-90">
+                  <p className="text-sm font-medium text-[var(--foreground)]">{anomaly.service}</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">
                     {anomaly.description}
                   </p>
                 </div>

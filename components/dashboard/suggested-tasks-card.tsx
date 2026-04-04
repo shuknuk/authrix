@@ -1,5 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
 import { EmptyState } from "@/components/ui/empty-state";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { SuggestedTask } from "@/types/domain";
 
 interface SuggestedTasksCardProps {
@@ -8,17 +9,20 @@ interface SuggestedTasksCardProps {
   compact?: boolean;
 }
 
-function getPriorityDot(priority: SuggestedTask["priority"]) {
-  switch (priority) {
-    case "critical":
-      return "bg-red-500";
-    case "high":
-      return "bg-orange-500";
-    case "medium":
-      return "bg-yellow-500";
-    default:
-      return "bg-zinc-500";
+function priorityTone(priority: SuggestedTask["priority"]) {
+  if (priority === "critical") {
+    return "danger" as const;
   }
+
+  if (priority === "high") {
+    return "warning" as const;
+  }
+
+  if (priority === "medium") {
+    return "info" as const;
+  }
+
+  return "neutral" as const;
 }
 
 export function SuggestedTasksCard({
@@ -31,69 +35,60 @@ export function SuggestedTasksCard({
   return (
     <CardShell
       title="Suggested Tasks"
-      description="Follow-up work extracted from summaries, risks, and recent activity."
+      description="Follow-up work prepared from weekly review and risk signals."
+      tone="accent"
+      actions={
+        visibleTasks.length > 0 ? <StatusPill tone="info">{visibleTasks.length} queued</StatusPill> : null
+      }
     >
       {visibleTasks.length === 0 ? (
         <EmptyState
           title="No suggested tasks"
-          description="Once Authrix sees enough activity, it will surface structured follow-ups here."
+          description="When enough activity is available, follow-up work will appear here."
         />
       ) : (
-        <div className="space-y-3">
-          {visibleTasks.map((task) => (
-            <div
-              key={task.id}
-              className="rounded-[1.25rem] border border-white/8 bg-slate-950/45 px-4 py-3"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <span
-                    className={`mt-1 inline-block h-2 w-2 shrink-0 rounded-full ${getPriorityDot(
-                      task.priority
-                    )}`}
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-zinc-100">
-                      {task.title}
-                    </p>
+        <div className="overflow-x-auto rounded-[12px] border border-[var(--border)] bg-[var(--background)]">
+          <table className="min-w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                <th className="px-4 py-3 font-medium">Task</th>
+                <th className="px-4 py-3 font-medium">Priority</th>
+                {!compact ? <th className="px-4 py-3 font-medium">Owner</th> : null}
+                {!compact ? <th className="px-4 py-3 font-medium">Due</th> : null}
+                <th className="px-4 py-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleTasks.map((task) => (
+                <tr key={task.id} className="border-t border-[var(--border)] align-top first:border-t-0">
+                  <td className="px-4 py-3">
+                    <p className="font-medium text-[var(--foreground-strong)]">{task.title}</p>
                     {!compact ? (
-                      <p className="mt-1 text-xs leading-5 text-slate-400">
+                      <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">
                         {task.description}
                       </p>
                     ) : null}
-                  </div>
-                </div>
-                <span className="shrink-0 rounded-full border border-white/8 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-400">
-                  {task.priority}
-                </span>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
-                  {task.source}
-                </span>
-                {!compact && task.suggestedOwner ? (
-                  <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
-                    Owner: {task.suggestedOwner}
-                  </span>
-                ) : null}
-                {!compact && task.dueDate ? (
-                  <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
-                    Due: {new Date(task.dueDate).toLocaleDateString()}
-                  </span>
-                ) : null}
-                {!compact ? (
-                  <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
-                    Status: {task.status}
-                  </span>
-                ) : null}
-                {!compact ? (
-                  <span className="rounded-full border border-white/6 bg-white/5 px-2.5 py-1">
-                    Agent: {task.sourceAgentId}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          ))}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusPill tone={priorityTone(task.priority)} size="sm">
+                      {task.priority}
+                    </StatusPill>
+                  </td>
+                  {!compact ? (
+                    <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
+                      {task.suggestedOwner ?? "Unassigned"}
+                    </td>
+                  ) : null}
+                  {!compact ? (
+                    <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
+                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "-"}
+                    </td>
+                  ) : null}
+                  <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">{task.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </CardShell>

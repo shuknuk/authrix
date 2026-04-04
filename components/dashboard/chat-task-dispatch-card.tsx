@@ -17,36 +17,49 @@ export function ChatTaskDispatchCard({
       <div className="space-y-3">
         {dispatches.length > 0 ? (
           dispatches.slice(0, 6).map((dispatch) => (
-            <div
-              key={dispatch.id}
-              className="rounded-[1.35rem] border border-white/10 bg-white/5 px-4 py-4"
-            >
+            <div key={dispatch.id} className="authrix-row px-4 py-4">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-100">
+                <span
+                  className="rounded-[var(--radius-sm)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em]"
+                  style={{
+                    color:
+                      dispatch.priority === "high"
+                          ? "var(--warning)"
+                          : dispatch.priority === "medium"
+                            ? "var(--primary)"
+                            : "var(--muted-foreground)",
+                    background:
+                      dispatch.priority === "high"
+                          ? "color-mix(in srgb, var(--warning) 8%, transparent)"
+                          : dispatch.priority === "medium"
+                            ? "color-mix(in srgb, var(--primary) 8%, transparent)"
+                            : "var(--background-muted)",
+                  }}
+                >
                   {dispatch.priority}
                 </span>
-                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-zinc-300">
+                <span className="rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--background-muted)] px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                   {formatAgentLabel(dispatch.assignedAgentId)}
                 </span>
-                <span className="text-[11px] text-zinc-500">
+                <span className="text-[11px] text-[var(--muted-foreground)]">
                   {new Date(dispatch.createdAt).toLocaleString()}
                 </span>
               </div>
-              <p className="mt-3 text-sm font-medium text-zinc-100">{dispatch.title}</p>
-              <p className="mt-1 text-xs leading-5 text-slate-400">{dispatch.description}</p>
+              <p className="mt-3 text-sm font-medium text-[var(--foreground)]">{dispatch.title}</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">{dispatch.description}</p>
               {dispatch.suggestedOwner ? (
-                <p className="mt-2 text-[11px] text-zinc-500">
+                <p className="mt-2 text-[11px] text-[var(--muted-foreground)]">
                   Suggested owner: {dispatch.suggestedOwner}
                 </p>
               ) : null}
             </div>
           ))
         ) : (
-          <div className="rounded-[1.35rem] border border-dashed border-white/10 bg-white/[0.03] px-4 py-6">
-            <p className="text-sm text-zinc-200">No chat-born follow-up yet.</p>
-            <p className="mt-2 text-xs leading-5 text-slate-400">
+          <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] bg-[var(--background-muted)] px-4 py-6">
+            <p className="text-sm text-[var(--foreground)]">No chat-born follow-up yet.</p>
+            <p className="mt-2 text-xs leading-5 text-[var(--muted-foreground)]">
               When Slack requests contain owners, follow-ups, or action language, Authrix
-              will capture them here and feed them into the control tower.
+              will capture them here and feed them into the workspace.
             </p>
           </div>
         )}

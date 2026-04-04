@@ -1,8 +1,14 @@
-import { CardShell } from "@/components/ui/card-shell";
 import { DeploymentReadinessCard } from "@/components/dashboard/deployment-readiness-card";
 import { DeploymentSmokeTestCard } from "@/components/dashboard/deployment-smoke-test-card";
+import { ModelLayerCard } from "@/components/dashboard/model-layer-card";
+import { OperatorOnboardingCard } from "@/components/dashboard/operator-onboarding-card";
+import { SecurityEventsCard } from "@/components/dashboard/security-events-card";
+import { SecurityPostureCard } from "@/components/dashboard/security-posture-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { MetricTile } from "@/components/ui/metric-tile";
 import { PageHeader } from "@/components/ui/page-header";
+import { SectionFrame } from "@/components/ui/section-frame";
+import { StatusPill } from "@/components/ui/status-pill";
 import {
   getGitHubConnectionName,
   getGitHubConnectionScopes,
@@ -13,15 +19,10 @@ import {
   getDeploymentReadinessReport,
   runDeploymentSmokeTest,
 } from "@/lib/deployment/readiness";
-import { getRuntimeBridge } from "@/lib/runtime/bridge";
-import { getSecurityPosture } from "@/lib/security/status";
-import { SecurityPostureCard } from "@/components/dashboard/security-posture-card";
-import { listSecurityEvents } from "@/lib/security/events";
-import { SecurityEventsCard } from "@/components/dashboard/security-events-card";
-import { OperatorOnboardingCard } from "@/components/dashboard/operator-onboarding-card";
-import { SlackSetupCard } from "@/components/dashboard/slack-setup-card";
-import { ModelLayerCard } from "@/components/dashboard/model-layer-card";
 import { getModelLayerStatus } from "@/lib/models/provider";
+import { getRuntimeBridge } from "@/lib/runtime/bridge";
+import { listSecurityEvents } from "@/lib/security/events";
+import { getSecurityPosture } from "@/lib/security/status";
 
 export default async function ConnectionsPage() {
   await requireSession("/connections");
@@ -38,216 +39,151 @@ export default async function ConnectionsPage() {
     getWorkspaceSnapshot(),
     getRuntimeBridge().getStatus(),
     Promise.resolve(getSecurityPosture()),
-    listSecurityEvents(6),
+    listSecurityEvents(8),
     getDeploymentReadinessReport(),
     runDeploymentSmokeTest(),
     Promise.resolve(getModelLayerStatus()),
   ]);
+
   const integrations = snapshot.integrations;
+  const connectedIntegrations = integrations.filter((integration) => integration.connected).length;
   const githubConnectionName = getGitHubConnectionName();
   const githubConnectHref = githubConnectionName
     ? buildGitHubConnectHref(githubConnectionName, getGitHubConnectionScopes())
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
         title="Connections"
-        description="Manage delegated access, runtime posture, and the bring-up path that turns Authrix into a real startup worker system."
+        eyebrow="Authrix Control Plane"
+        description="Delegated access, runtime posture, and worker-box readiness for the demo workspace."
+        status={
+          <>
+            <StatusPill tone={runtimeStatus.mode === "live" ? "success" : "warning"}>
+              Runtime {runtimeStatus.mode}
+            </StatusPill>
+            <StatusPill tone={securityPosture.externalWritesEnabled ? "warning" : "success"}>
+              {securityPosture.externalWritesEnabled ? "Writes enabled" : "Writes blocked"}
+            </StatusPill>
+          </>
+        }
       />
 
-      <OperatorOnboardingCard report={readinessReport} />
-      <SecurityPostureCard posture={securityPosture} />
-      <DeploymentReadinessCard report={readinessReport} />
-      <DeploymentSmokeTestCard report={smokeReport} />
-      <SlackSetupCard />
-      <ModelLayerCard status={modelLayerStatus} />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <MetricTile
+          label="Connected systems"
+          value={connectedIntegrations}
+          tone={connectedIntegrations > 0 ? "success" : "warning"}
+        />
+        <MetricTile
+          label="Security events"
+          value={securityEvents.length}
+          tone={securityEvents.length > 0 ? "warning" : "success"}
+        />
+        <MetricTile label="Pipelines visible" value={snapshot.state.pipelines.length} tone="accent" />
+      </div>
 
-      <CardShell
-        title="Autonomous Runtime"
-        description="Authrix runs on an internal autonomous runtime engine. The product layer stays cleanly separated so runtime internals remain an implementation detail."
-      >
-        <div className="flex items-start justify-between gap-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-zinc-200">Runtime engine</p>
-              <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                {formatRuntimeProvider(runtimeStatus.provider)}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-zinc-500">{runtimeStatus.description}</p>
-            {runtimeStatus.url ? (
-              <p className="mt-2 text-[11px] text-zinc-600">
-                Runtime endpoint: {runtimeStatus.url}
-              </p>
-            ) : null}
-            {runtimeStatus.agentId ? (
-              <p className="mt-2 text-[11px] text-zinc-600">
-                Default runtime worker: {runtimeStatus.agentId}
-              </p>
-            ) : null}
-            {runtimeStatus.availableMethods && runtimeStatus.availableMethods.length > 0 ? (
-              <p className="mt-2 text-[11px] text-zinc-600">
-                Available methods: {runtimeStatus.availableMethods.length}
-              </p>
-            ) : null}
-            <p className="mt-2 text-[11px] text-zinc-600">
-              Connect scopes: {securityPosture.runtimeConnectScopes.join(", ")}
-            </p>
-            <p className="mt-2 text-[11px] text-zinc-600">
-              Tool policy: {runtimeStatus.toolPolicy?.mode ?? "unknown"}
-            </p>
-          </div>
-          <span
-            className={`rounded-full px-3 py-1 text-xs ${
-              runtimeStatus.mode === "live"
-                ? "bg-green-900/30 text-green-400"
-                : runtimeStatus.mode === "mock"
-                  ? "bg-zinc-800 text-zinc-400"
-                  : "bg-amber-900/30 text-amber-400"
-            }`}
-          >
-            {runtimeStatus.mode === "live"
-              ? "Live"
-              : runtimeStatus.mode === "mock"
-                ? "Mock"
-                : "Disconnected"}
-          </span>
-        </div>
-      </CardShell>
-
-      <CardShell
-        title="Product State"
-        description="This is the persisted backend state that powers the control tower. Pipeline health is shown honestly so fallback paths stay visible."
-      >
-        <div className="space-y-3">
-          <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3 text-xs text-zinc-400">
-            <p>Storage: {snapshot.state.storage}</p>
-            <p className="mt-2">
-              Last refreshed: {new Date(snapshot.state.refreshedAt).toLocaleString()}
-            </p>
-            <p className="mt-2">
-              Last persisted: {new Date(snapshot.state.persistedAt).toLocaleString()}
-            </p>
-          </div>
-          {snapshot.state.pipelines.map((pipeline) => (
-            <div
-              key={pipeline.id}
-              className="flex items-start justify-between gap-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm font-medium text-zinc-200">{pipeline.label}</p>
-                  <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                    {formatRuntimeProvider(pipeline.provider)}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-zinc-500">{pipeline.message}</p>
-                <p className="mt-2 text-[11px] text-zinc-600">
-                  Updated {new Date(pipeline.updatedAt).toLocaleString()}
-                </p>
-              </div>
-              <span
-                className={`rounded-full px-3 py-1 text-xs ${
-                  pipeline.health === "ready"
-                    ? "bg-green-900/30 text-green-400"
-                    : pipeline.health === "fallback"
-                      ? "bg-amber-900/30 text-amber-400"
-                      : "bg-red-900/30 text-red-400"
-                }`}
-              >
-                {pipeline.health}
-              </span>
-            </div>
-          ))}
-        </div>
-      </CardShell>
-
-      <CardShell
-        title="Integration Status"
-        description="Agents never hold raw credentials. All third-party access and professional messaging surfaces are routed through controlled backend adapters."
+      <SectionFrame
+        title="Delegated Access"
+        description="Connection status and runtime details are shown before any bring-up internals."
       >
         {integrations.length === 0 ? (
           <EmptyState
             title="No integrations configured"
-            description="Connect GitHub first, then expand into the rest of the workspace as the product grows."
+            description="Connect GitHub first to start generating reviewable weekly output."
           />
         ) : (
-          <div className="space-y-3">
-            {integrations.map((integration) => (
-              <div
-                key={integration.service}
-                className="flex items-start justify-between gap-4 rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-medium text-zinc-200">
+          <div className="overflow-x-auto rounded-[12px] border border-[var(--border)] bg-[var(--background)]">
+            <table className="min-w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[var(--border)] text-[11px] uppercase tracking-[0.16em] text-[var(--muted-foreground)]">
+                  <th className="px-4 py-3 font-medium">System</th>
+                  <th className="px-4 py-3 font-medium">Mode</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {integrations.map((integration) => (
+                  <tr key={integration.service} className="border-t border-[var(--border)] first:border-t-0">
+                    <td className="px-4 py-3 font-medium text-[var(--foreground-strong)]">
                       {integration.service}
-                    </p>
-                    {integration.mode ? (
-                      <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                        {integration.mode}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-xs text-zinc-500">
-                    {integration.description ??
-                      (integration.connected
-                        ? "Delegated access is available."
-                        : "Waiting for delegated access.")}
-                  </p>
-                  {integration.scopes && integration.scopes.length > 0 ? (
-                    <p className="mt-2 text-[11px] text-zinc-600">
-                      Scopes: {integration.scopes.join(", ")}
-                    </p>
-                  ) : null}
-                  {integration.lastSyncedAt ? (
-                    <p className="mt-2 text-[11px] text-zinc-600">
-                      Last sync:{" "}
-                      {new Date(integration.lastSyncedAt).toLocaleString()}
-                    </p>
-                  ) : null}
-                  {integration.service === "GitHub" && githubConnectHref ? (
-                    <div className="mt-3 flex flex-wrap gap-3">
-                      {integration.mode !== "token-vault" ? (
-                        <a
-                          href={githubConnectHref}
-                          className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800"
-                        >
-                          Connect GitHub With Auth0
-                        </a>
-                      ) : (
-                        <span className="inline-flex items-center rounded-full border border-green-800/50 bg-green-900/20 px-3 py-1.5 text-xs font-medium text-green-300">
-                          Delegated GitHub access active
-                        </span>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-                <span
-                  className={`rounded-full px-3 py-1 text-xs ${
-                    integration.status === "active"
-                      ? "bg-green-900/30 text-green-400"
-                      : integration.status === "error"
-                        ? "bg-red-900/30 text-red-400"
-                        : "bg-zinc-800 text-zinc-500"
-                  }`}
-                >
-                  {integration.status === "error"
-                    ? "Fallback"
-                    : integration.connected
-                      ? "Connected"
-                      : integration.mode === "mock"
-                        ? "Mock"
-                        : "Not connected"}
-                </span>
-              </div>
-            ))}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-[var(--muted-foreground)]">
+                      {integration.mode ?? "n/a"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusPill
+                        tone={
+                          integration.status === "active"
+                            ? "success"
+                            : integration.status === "error"
+                              ? "danger"
+                              : "neutral"
+                        }
+                        size="sm"
+                      >
+                        {integration.connected ? "Connected" : "Needs setup"}
+                      </StatusPill>
+                    </td>
+                    <td className="px-4 py-3 text-xs leading-5 text-[var(--muted-foreground)]">
+                      {integration.description ?? "Delegated adapter routing enabled."}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </CardShell>
 
-      <SecurityEventsCard events={securityEvents} limit={6} />
+        <div className="rounded-[12px] border border-[var(--border)] bg-[var(--background-elevated)] px-4 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-medium text-[var(--foreground-strong)]">Runtime bridge</p>
+            <StatusPill size="sm">{formatRuntimeProvider(runtimeStatus.provider)}</StatusPill>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
+            {runtimeStatus.description}
+          </p>
+          {runtimeStatus.url ? (
+            <p className="mt-2 text-xs text-[var(--muted-foreground)]">Endpoint: {runtimeStatus.url}</p>
+          ) : null}
+          {githubConnectHref ? (
+            <a
+              href={githubConnectHref}
+              className="mt-3 inline-flex rounded-full border border-[var(--primary-border)] bg-[var(--primary)] px-4 py-1.5 text-xs font-medium text-[var(--primary-foreground)] hover:opacity-90"
+            >
+              Connect GitHub with Auth0
+            </a>
+          ) : null}
+        </div>
+      </SectionFrame>
+
+      <SectionFrame
+        title="Bring-up"
+        description="Worker-box checklist and smoke test keep the demo posture explicit."
+      >
+        <div className="grid gap-4 xl:grid-cols-2">
+          <OperatorOnboardingCard report={readinessReport} />
+          <DeploymentReadinessCard report={readinessReport} />
+          <div className="xl:col-span-2">
+            <DeploymentSmokeTestCard report={smokeReport} />
+          </div>
+        </div>
+      </SectionFrame>
+
+      <SectionFrame
+        title="Security And Model Layer"
+        description="Guardrails, recent policy events, and model routing posture for operator review."
+      >
+        <div className="grid gap-4 xl:grid-cols-2">
+          <SecurityPostureCard posture={securityPosture} />
+          <ModelLayerCard status={modelLayerStatus} />
+          <div className="xl:col-span-2">
+            <SecurityEventsCard events={securityEvents} limit={8} />
+          </div>
+        </div>
+      </SectionFrame>
     </div>
   );
 }

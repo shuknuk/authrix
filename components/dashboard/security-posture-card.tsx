@@ -1,4 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
+import { SignalList } from "@/components/ui/signal-list";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { SecurityPosture } from "@/types/security";
 
 interface SecurityPostureCardProps {
@@ -15,7 +17,8 @@ export function SecurityPostureCard({
   return (
     <CardShell
       title="Security Posture"
-      description="Deployment mode, delegated identity, write policy, and runtime guardrails are surfaced here so Authrix security stays inspectable."
+      description="Deployment mode, delegated identity, write policy, and runtime guardrails stay visible so the workspace remains inspectable."
+      tone={posture.warnings.length > 0 ? "warning" : "success"}
     >
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2">
@@ -35,36 +38,42 @@ export function SecurityPostureCard({
           </Badge>
         </div>
 
-        <div className="space-y-2">
-          {visibleGuardrails.map((guardrail) => (
-            <div
-              key={guardrail.id}
-              className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-zinc-200">{guardrail.label}</p>
-                <Badge tone={toneForGuardrail(guardrail.state)}>{guardrail.state}</Badge>
-              </div>
-              <p className="mt-1 text-xs text-zinc-500">{guardrail.message}</p>
-            </div>
-          ))}
-        </div>
+        <SignalList
+          items={visibleGuardrails.map((guardrail) => ({
+            id: guardrail.id,
+            title: guardrail.label,
+            description: guardrail.message,
+            meta: guardrail.state,
+            tone:
+              guardrail.state === "enabled"
+                ? "success"
+                : guardrail.state === "warning"
+                  ? "warning"
+                  : "danger",
+          }))}
+        />
 
         {posture.warnings.length > 0 ? (
-          <div className="rounded-xl border border-amber-900/50 bg-amber-950/20 px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-amber-300">
+          <div
+            className="rounded-[var(--radius-sm)] border px-4 py-3"
+            style={{
+              borderColor: "color-mix(in srgb, var(--warning) 20%, transparent)",
+              background: "color-mix(in srgb, var(--warning) 8%, transparent)",
+            }}
+          >
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-[var(--warning)]">
               Active warnings
             </p>
             <div className="mt-2 space-y-1">
               {posture.warnings.map((warning) => (
-                <p key={warning} className="text-xs text-amber-100/85">
+                <p key={warning} className="text-xs text-[var(--foreground)]/86">
                   {warning}
                 </p>
               ))}
             </div>
           </div>
         ) : (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-[var(--muted-foreground)]">
             No active posture warnings. Guardrail configuration matches the preferred deployment posture.
           </p>
         )}
@@ -92,14 +101,12 @@ function Badge({
   children: React.ReactNode;
   tone: "good" | "warn" | "danger";
 }) {
-  const className =
-    tone === "good"
-      ? "bg-green-900/30 text-green-300"
-      : tone === "warn"
-        ? "bg-amber-900/30 text-amber-300"
-        : "bg-red-900/30 text-red-300";
-
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs ${className}`}>{children}</span>
+    <StatusPill
+      tone={tone === "good" ? "success" : tone === "warn" ? "warning" : "danger"}
+      size="sm"
+    >
+      {children}
+    </StatusPill>
   );
 }

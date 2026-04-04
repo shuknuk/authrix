@@ -1,4 +1,6 @@
 import { CardShell } from "@/components/ui/card-shell";
+import { SignalList } from "@/components/ui/signal-list";
+import { StatusPill } from "@/components/ui/status-pill";
 import type { DeploymentReadinessReport } from "@/types/deployment";
 
 interface DeploymentReadinessCardProps {
@@ -11,8 +13,15 @@ export function DeploymentReadinessCard({
   return (
     <CardShell
       title="Deployment Readiness"
-      description="This is the operator-facing bring-up checklist for a dedicated Authrix worker box."
-      badge={<StatusBadge status={report.overallStatus}>{report.overallStatus}</StatusBadge>}
+      description="Operator-facing bring-up checklist for a dedicated Authrix worker box."
+      tone={
+        report.overallStatus === "ready"
+          ? "success"
+          : report.overallStatus === "warning"
+            ? "warning"
+            : "danger"
+      }
+      actions={<StatusBadge status={report.overallStatus}>{report.overallStatus}</StatusBadge>}
     >
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -21,54 +30,54 @@ export function DeploymentReadinessCard({
           </StatusBadge>
         </div>
 
-        <div className="space-y-2">
-          {report.checks.map((check) => (
-            <div
-              key={check.id}
-              className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3"
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-zinc-200">{check.label}</p>
-                <StatusBadge status={check.status}>{check.status}</StatusBadge>
-              </div>
-              <p className="mt-1 text-xs leading-5 text-zinc-500">{check.message}</p>
-            </div>
-          ))}
-        </div>
+        <SignalList
+          items={report.checks.map((check) => ({
+            id: check.id,
+            title: check.label,
+            description: check.message,
+            meta: check.status,
+            tone:
+              check.status === "ready"
+                ? "success"
+                : check.status === "warning"
+                  ? "warning"
+                  : "danger",
+          }))}
+        />
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+          <div className="authrix-row px-4 py-3">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-[var(--muted-foreground)]">
               Bring-up Checklist
             </p>
             <div className="mt-3 space-y-2">
               {report.checklist.map((item) => (
                 <div key={item.id}>
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm text-zinc-200">{item.label}</p>
+                    <p className="text-sm text-[var(--foreground)]">{item.label}</p>
                     <ChecklistBadge status={item.status}>
                       {formatChecklistStatus(item.status)}
                     </ChecklistBadge>
                   </div>
-                  <p className="mt-1 text-xs leading-5 text-zinc-500">{item.description}</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--muted-foreground)]">{item.description}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 px-4 py-3">
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+          <div className="authrix-row px-4 py-3">
+            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-[var(--muted-foreground)]">
               Next Steps
             </p>
             <div className="mt-3 space-y-2">
               {report.nextSteps.length > 0 ? (
                 report.nextSteps.map((step) => (
-                  <p key={step} className="text-xs leading-5 text-zinc-400">
+                  <p key={step} className="text-xs leading-5 text-[var(--muted-foreground)]">
                     {step}
                   </p>
                 ))
               ) : (
-                <p className="text-xs leading-5 text-zinc-400">
+                <p className="text-xs leading-5 text-[var(--muted-foreground)]">
                   Worker-box bring-up checks are aligned. You can move into deployment smoke testing.
                 </p>
               )}
@@ -87,15 +96,13 @@ function StatusBadge({
   children: React.ReactNode;
   status: "ready" | "warning" | "blocked";
 }) {
-  const className =
-    status === "ready"
-      ? "bg-green-900/30 text-green-300"
-      : status === "warning"
-        ? "bg-amber-900/30 text-amber-300"
-        : "bg-red-900/30 text-red-300";
-
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs ${className}`}>{children}</span>
+    <StatusPill
+      tone={status === "ready" ? "success" : status === "warning" ? "warning" : "danger"}
+      size="sm"
+    >
+      {children}
+    </StatusPill>
   );
 }
 
@@ -106,15 +113,13 @@ function ChecklistBadge({
   children: React.ReactNode;
   status: "pending" | "in_progress" | "complete";
 }) {
-  const className =
-    status === "complete"
-      ? "bg-green-900/30 text-green-300"
-      : status === "in_progress"
-        ? "bg-amber-900/30 text-amber-300"
-        : "bg-zinc-800 text-zinc-400";
-
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs ${className}`}>{children}</span>
+    <StatusPill
+      tone={status === "complete" ? "success" : status === "in_progress" ? "warning" : "neutral"}
+      size="sm"
+    >
+      {children}
+    </StatusPill>
   );
 }
 
