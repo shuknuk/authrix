@@ -144,10 +144,10 @@ export function SpecialistRolesSection() {
                 </h3>
 
                 {/* Subtitle */}
-                <p className="mb-3 text-sm text-white/50">{specialist.subtitle}</p>
+                <p className="mb-3 text-sm text-white/70">{specialist.subtitle}</p>
 
                 {/* Description */}
-                <p className="mb-6 text-sm leading-relaxed text-white/60">
+                <p className="mb-6 text-sm leading-relaxed text-white/80">
                   {specialist.description}
                 </p>
 

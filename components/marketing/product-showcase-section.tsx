@@ -61,7 +61,7 @@ export function ProductShowcaseSection() {
             </h2>
 
             {/* Description */}
-            <p className="mt-6 max-w-md text-base leading-relaxed text-white/50">
+            <p className="mt-6 max-w-md text-base leading-relaxed text-white/70">
               Authrix turns engineering activity, meeting records, documentation
               updates, and usage signals into weekly reviews, follow-up work, spend
               visibility, and approval-gated actions.
@@ -99,7 +99,7 @@ export function ProductShowcaseSection() {
 
             {/* Bottom section - Designed around */}
             <div className="mt-12 border-t border-white/10 pt-8">
-              <p className="mb-4 text-xs font-medium uppercase tracking-[0.15em] text-white/40">
+              <p className="mb-4 text-xs font-medium uppercase tracking-[0.15em] text-white/60">
                 Designed Around
               </p>
               <ul className="space-y-2">
@@ -111,9 +111,9 @@ export function ProductShowcaseSection() {
                 ].map((item) => (
                   <li
                     key={item}
-                    className="flex items-center gap-2 text-sm text-white/60"
+                    className="flex items-center gap-2 text-sm text-white/80"
                   >
-                    <span className="text-white/30">›</span>
+                    <span className="text-white/60">›</span>
                     {item}
                   </li>
                 ))}
