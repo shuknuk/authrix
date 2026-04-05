@@ -57,7 +57,27 @@ export function RuntimeSessionsCard({
                         Last run: {formatTimestamp(session.lastRunAt)}
                       </span>
                     ) : null}
+                    {readBoolean(session.metadata.resumable) ? (
+                      <span className="rounded-full border border-cyan-900/40 bg-cyan-950/30 px-2 py-1 text-cyan-200">
+                        Resumable
+                      </span>
+                    ) : null}
                   </div>
+                  {readString(session.metadata.memorySummary) ? (
+                    <div className="mt-3 rounded-lg border border-white/8 bg-white/[0.03] px-3 py-3">
+                      <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                        Memory
+                      </p>
+                      <p className="mt-2 text-xs leading-5 text-zinc-300">
+                        {readString(session.metadata.memorySummary)}
+                      </p>
+                      {readString(session.metadata.resumeHint) ? (
+                        <p className="mt-2 text-[11px] leading-5 text-cyan-200">
+                          {readString(session.metadata.resumeHint)}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {session.lastError ? (
                     <p className="mt-3 rounded-lg border border-red-900/40 bg-red-950/40 px-3 py-2 text-xs leading-5 text-red-200">
                       {session.lastError}
@@ -111,4 +131,12 @@ function formatOrigin(origin: RuntimeSessionRecord["origin"]): string {
 
 function formatTimestamp(value: string): string {
   return new Date(value).toLocaleString();
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readBoolean(value: unknown): boolean {
+  return value === true;
 }

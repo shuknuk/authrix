@@ -1,5 +1,6 @@
 import { ApprovalQueueCard } from "@/components/dashboard/approval-queue-card";
 import { AgentRosterCard } from "@/components/dashboard/agent-roster-card";
+import { AgentHandoffsCard } from "@/components/dashboard/agent-handoffs-card";
 import { ChatModelActivityCard } from "@/components/dashboard/chat-model-activity-card";
 import { ChatTaskDispatchCard } from "@/components/dashboard/chat-task-dispatch-card";
 import { ChatActivityCard } from "@/components/dashboard/chat-activity-card";
@@ -8,6 +9,7 @@ import { DelegationHistoryCard } from "@/components/dashboard/delegation-history
 import { getDeploymentReadinessReport } from "@/lib/deployment/readiness";
 import { ModelLayerCard } from "@/components/dashboard/model-layer-card";
 import { OperatorOnboardingCard } from "@/components/dashboard/operator-onboarding-card";
+import { ProactiveAutonomyCard } from "@/components/dashboard/proactive-autonomy-card";
 import { RiskAlertsCard } from "@/components/dashboard/risk-alerts-card";
 import { RuntimeRunsCard } from "@/components/dashboard/runtime-runs-card";
 import { RuntimeSessionsCard } from "@/components/dashboard/runtime-sessions-card";
@@ -15,6 +17,7 @@ import { ScheduledBriefingsCard } from "@/components/dashboard/scheduled-briefin
 import { SecurityPostureCard } from "@/components/dashboard/security-posture-card";
 import { SuggestedTasksCard } from "@/components/dashboard/suggested-tasks-card";
 import { WeeklySummaryCard } from "@/components/dashboard/weekly-summary-card";
+import { WorkspaceMemoryCard } from "@/components/dashboard/workspace-memory-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { requireSession } from "@/lib/auth/session";
 import { listWorkspaceJobs } from "@/lib/data/jobs";
@@ -38,7 +41,7 @@ export default async function DashboardPage() {
     runtimeRuns,
   ] = await Promise.all([
     getWorkspaceSnapshot(),
-    listWorkspaceJobs(1),
+    listWorkspaceJobs(6),
     Promise.resolve(getSecurityPosture()),
     getDeploymentReadinessReport(),
     loadSlackWorkspaceState(),
@@ -85,7 +88,7 @@ export default async function DashboardPage() {
                   : "bg-amber-900/30 text-amber-300"
             }`}
           >
-            Latest refresh job: {latestJob.state}
+            Latest job: {latestJob.state}
           </span>
         ) : null}
         <span
@@ -123,17 +126,26 @@ export default async function DashboardPage() {
           schedules={slackState.briefingSchedules}
           briefings={slackState.briefings}
         />
+        <ProactiveAutonomyCard
+          jobs={jobs}
+          schedules={slackState.briefingSchedules}
+          briefings={slackState.briefings}
+          sessions={runtimeSessions}
+          memories={snapshot.memories}
+        />
         <ChatModelActivityCard
           dispatches={slackState.dispatches}
           briefings={slackState.briefings}
         />
         <RuntimeRunsCard runs={runtimeRuns} limit={4} />
         <DelegationHistoryCard delegations={slackState.delegations} />
+        <WorkspaceMemoryCard memories={snapshot.memories} limit={4} />
         <WeeklySummaryCard summary={snapshot.engineeringSummary} />
         <ChatTaskDispatchCard dispatches={slackState.taskDispatches} />
         <SuggestedTasksCard tasks={snapshot.tasks} limit={5} compact />
         <CostRiskCard report={snapshot.costReport} compact />
         <ApprovalQueueCard approvals={snapshot.approvalRequests} limit={5} />
+        <AgentHandoffsCard handoffs={snapshot.handoffs} limit={4} />
         <RiskAlertsCard
           alerts={driftAlerts}
           title="Operational Drift"

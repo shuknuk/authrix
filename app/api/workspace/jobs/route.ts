@@ -3,7 +3,9 @@ import { getOptionalSession } from "@/lib/auth/session";
 import { isAuthConfigured } from "@/lib/auth/auth0";
 import {
   listWorkspaceJobs,
+  submitProactiveReviewJob,
   submitSlackBriefingJob,
+  submitWorkflowFollowUpJob,
   submitWorkspaceRefreshJob,
 } from "@/lib/data/jobs";
 
@@ -28,14 +30,22 @@ export async function POST(request: Request) {
   }
 
   const payload = (await request.json().catch(() => ({}))) as {
-    type?: "workspace.refresh" | "slack.briefing.run";
+    type?:
+      | "workspace.refresh"
+      | "slack.briefing.run"
+      | "workflow.followup.run"
+      | "workspace.proactive.review";
     scheduleId?: string;
   };
 
   const job =
     payload.type === "slack.briefing.run"
       ? await submitSlackBriefingJob(payload.scheduleId)
-      : await submitWorkspaceRefreshJob();
+      : payload.type === "workspace.proactive.review"
+        ? await submitProactiveReviewJob()
+      : payload.type === "workflow.followup.run"
+        ? await submitWorkflowFollowUpJob()
+        : await submitWorkspaceRefreshJob();
 
   return NextResponse.json({ job }, { status: 202 });
 }

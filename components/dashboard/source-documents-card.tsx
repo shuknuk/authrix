@@ -21,7 +21,7 @@ export function SourceDocumentsCard({
       {visibleDocuments.length === 0 ? (
         <EmptyState
           title="No meeting sources yet"
-          description="Add a transcript or meeting note and Authrix will turn it into artifacts, decisions, and follow-up work."
+          description="Add a transcript, note, or meeting audio upload and Authrix will turn it into artifacts, decisions, and follow-up work."
         />
       ) : (
         <div className="space-y-3">
@@ -32,12 +32,14 @@ export function SourceDocumentsCard({
             >
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-zinc-200">{document.title}</p>
-                <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
-                  {document.documentType}
-                </span>
+                <Badge>{document.documentType}</Badge>
+                {document.metadata.uploadKind === "audio" ? <Badge>audio</Badge> : null}
+                {typeof document.metadata.transcriptionMode === "string" ? (
+                  <Badge>{document.metadata.transcriptionMode}</Badge>
+                ) : null}
               </div>
               <p className="mt-1 text-xs text-zinc-500">
-                {document.sourceSystem} · {new Date(document.createdAt).toLocaleString()}
+                {document.sourceSystem} - {new Date(document.createdAt).toLocaleString()}
               </p>
               <p className="mt-2 text-xs leading-5 text-zinc-400">
                 {document.content.slice(0, 180)}
@@ -48,10 +50,23 @@ export function SourceDocumentsCard({
                   Participants: {document.participants.join(", ")}
                 </p>
               ) : null}
+              {document.metadata.workflowHandoffRequested === false ? (
+                <p className="mt-2 text-[11px] text-zinc-600">
+                  Workflow handoff is currently off for this document.
+                </p>
+              ) : null}
             </div>
           ))}
         </div>
       )}
     </CardShell>
+  );
+}
+
+function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full border border-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+      {children}
+    </span>
   );
 }

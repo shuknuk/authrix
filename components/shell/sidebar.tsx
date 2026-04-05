@@ -8,7 +8,7 @@ const navItems = [
   { href: "/connections", label: "Connections" },
   { href: "/activity", label: "Activity" },
   { href: "/tasks", label: "Tasks" },
-  { href: "/costs", label: "Costs" },
+  { href: "/costs", label: "Finance" },
 ];
 
 interface SidebarProps {
@@ -42,7 +42,7 @@ export function Sidebar({ user }: SidebarProps) {
               Control posture
             </p>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Live oversight for engineering, docs, workflow, costs, and approvals.
+              Live oversight for engineering, docs, workflow, finance, and approvals.
             </p>
             <div className="mt-4 flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.16em]">
               <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-cyan-100/80">

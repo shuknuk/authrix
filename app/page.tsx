@@ -12,7 +12,7 @@ const AGENTS = [
   ["Engineer", "Technical change awareness and engineering summaries"],
   ["Docs", "Meeting intelligence, decision capture, and durable knowledge"],
   ["Workflow", "Ownership, follow-through, and accountability"],
-  ["DevOps", "Cost posture, anomalies, and operational risk"],
+  ["Finance/Ops", "Spend posture, founder finance answers, and operational risk"],
 ];
 
 export default async function Home() {

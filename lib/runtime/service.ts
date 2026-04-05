@@ -1,5 +1,7 @@
 import { getBaseRuntimeBridge, getRuntimeBridge } from "@/lib/runtime/bridge";
 import { executeEngineerAutonomyRun } from "@/lib/engineer/executor";
+import { executeFinanceQuestionRun } from "@/lib/finance/qa";
+import { compactRuntimeSessionMemory } from "@/lib/memory/service";
 import {
   appendRuntimeTranscriptEvent,
   createRuntimeRunRecord,
@@ -216,6 +218,7 @@ async function executeQueuedRuntimeAgentRun(input: {
 
   try {
     const engineerRequest = readEngineerRequest(input.agentId, input.payload);
+    const financeRequest = readFinanceRequest(input.agentId, input.payload);
     const result = engineerRequest
       ? await executeEngineerAutonomyRun({
           sessionId: input.sessionId,
@@ -223,6 +226,8 @@ async function executeQueuedRuntimeAgentRun(input: {
           request: engineerRequest.request,
           requestedRepository: engineerRequest.repository,
         })
+      : financeRequest
+        ? await executeFinanceQuestionRun(financeRequest.request)
       : await bridge.executeAgent({
           agentId: input.agentId,
           input: input.payload,
@@ -295,6 +300,8 @@ async function executeQueuedRuntimeAgentRun(input: {
         provider: bridge.provider,
       },
     });
+
+    await compactRuntimeSessionMemory(input.sessionId);
   } catch (error) {
     const completedAt = new Date().toISOString();
     const errorMessage = toErrorMessage(error);
@@ -323,6 +330,8 @@ async function executeQueuedRuntimeAgentRun(input: {
         provider: bridge.provider,
       },
     });
+
+    await compactRuntimeSessionMemory(input.sessionId);
   }
 }
 
@@ -380,5 +389,25 @@ function readEngineerRequest(
       typeof candidate.repository === "string" && candidate.repository.trim()
         ? candidate.repository.trim()
         : null,
+  };
+}
+
+function readFinanceRequest(
+  agentId: string,
+  payload: unknown
+): { request: string } | null {
+  if (agentId !== "devops" || typeof payload !== "object" || payload === null) {
+    return null;
+  }
+
+  const candidate = payload as {
+    request?: unknown;
+  };
+  if (typeof candidate.request !== "string" || !candidate.request.trim()) {
+    return null;
+  }
+
+  return {
+    request: candidate.request.trim(),
   };
 }

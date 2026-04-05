@@ -69,7 +69,7 @@ function formatAgentLabel(agentId: string): string {
   }
 
   if (agentId === "devops") {
-    return "DevOps";
+    return "Finance/Ops";
   }
 
   return "Engineer";

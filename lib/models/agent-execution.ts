@@ -163,6 +163,11 @@ export async function runModelWorkflowAgent(
     sourceAgentId: "workflow",
     status: "suggested",
     createdAt,
+    metadata: {
+      workflowOrigin: "model_generated",
+      ownerStatus: readString(task, "suggestedOwner") ? "assigned" : "missing",
+      trackingStatus: "not_requested",
+    },
   }));
 
   const alerts: RiskAlert[] = readArray(parsed, "alerts").map((alert, index) => ({
@@ -195,7 +200,7 @@ export async function runModelDevopsAgent(
       {
         role: "system",
         content:
-          'You are the Authrix DevOps agent. Return JSON only with keys summary and riskLevel. riskLevel must be one of low, medium, high.',
+          'You are the Authrix Finance/Ops agent. Return JSON only with keys summary and riskLevel. riskLevel must be one of low, medium, high.',
       },
       {
         role: "user",

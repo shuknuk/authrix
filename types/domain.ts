@@ -139,6 +139,7 @@ export interface SuggestedTask {
   sourceAgentId: string;
   status: TaskStatus;
   createdAt: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface MeetingActionItem {
@@ -215,6 +216,7 @@ export interface CostReport {
   anomalies: CostAnomaly[];
   riskLevel: RiskLevel;
   summary: string;
+  metadata?: Record<string, unknown>;
 }
 
 // --- Approvals ---
@@ -295,6 +297,32 @@ export interface AgentRunRecord {
   relatedRecordIds: string[];
 }
 
+export interface WorkspaceMemoryRecord {
+  id: string;
+  title: string;
+  summary: string;
+  category: "context" | "decision" | "task" | "finance" | "continuity";
+  sourceAgentId: string;
+  createdAt: string;
+  updatedAt: string;
+  confidence: "high" | "medium" | "low";
+  relatedRecordIds: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface AgentHandoffRecord {
+  id: string;
+  fromAgentId: string;
+  toAgentId: string;
+  source: string;
+  reason: string;
+  status: "open" | "completed";
+  createdAt: string;
+  completedAt?: string;
+  relatedRecordIds: string[];
+  metadata?: Record<string, unknown>;
+}
+
 // --- Workspace ---
 
 export interface Workspace {
@@ -337,6 +365,7 @@ export interface WorkspaceStateInfo {
   storage: "filesystem";
   refreshedAt: string;
   persistedAt: string;
+  memoryRefreshedAt?: string;
   pipelines: WorkspacePipelineStatus[];
 }
 
@@ -357,5 +386,7 @@ export interface WorkspaceSnapshot {
   approvalRequests: ApprovalRequest[];
   auditEvents: AuditEvent[];
   agentRuns: AgentRunRecord[];
+  memories: WorkspaceMemoryRecord[];
+  handoffs: AgentHandoffRecord[];
   timeline: TimelineEntry[];
 }

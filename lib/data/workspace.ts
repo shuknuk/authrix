@@ -17,13 +17,22 @@ import {
   updatePersistedWorkspaceSnapshot,
 } from "@/lib/data/workspace-store";
 import { getAuth0IntegrationStatus, getGitHubIngestionResult } from "@/lib/github/service";
-import { mockCostAnomalies, mockCostBreakdown, mockCostTotals } from "@/lib/mock/cost-data";
+import { loadFinanceIngestion } from "@/lib/finance/ingestion";
+import {
+  buildAgentHandoffRecords,
+  buildWorkspaceMemoryRecords,
+  compactRecentRuntimeSessions,
+  countResumableRuntimeSessions,
+} from "@/lib/memory/service";
 import { normalizeGitHubEvents } from "@/lib/mock/github-activity";
 import { mockIntegrations } from "@/lib/mock/integrations";
 import { mockMeetingDocuments } from "@/lib/mock/meeting-documents";
 import { getNotionIntegrationStatus } from "@/lib/notion/service";
 import { getSlackIntegrationStatus } from "@/lib/slack/service";
+import { loadSlackWorkspaceState } from "@/lib/slack/store";
+import { syncWorkflowFollowUpRecords } from "@/lib/workflow/follow-up";
 import type {
+  AgentHandoffRecord,
   AgentRunRecord,
   ApprovalRequest,
   ApprovalStatus,
@@ -43,6 +52,7 @@ import type {
   TimelineEntry,
   TranscriptEntry,
   Workspace,
+  WorkspaceMemoryRecord,
   WorkspacePipelineStatus,
   WorkspaceSnapshot,
 } from "@/types/domain";
@@ -209,13 +219,71 @@ export async function updateTaskRecord(
     return null;
   }
 
-  return updatedSnapshot.tasks.find((item) => item.id === id) ?? null;
+  let finalSnapshot = updatedSnapshot;
+  let task = finalSnapshot.tasks.find((item) => item.id === id) ?? null;
+  if (task && input.status === "approved" && shouldQueueWorkflowIssueApproval(task)) {
+    const approvalBundle = await createLiveApprovalRequest({
+      actionKind: "github.issue.create",
+      title: buildWorkflowIssueTitle(task),
+      description: buildWorkflowIssueDescription(task),
+      sourceAgent: "workflow",
+      affectedSystem: "GitHub",
+      riskLevel: mapTaskPriorityToRisk(task.priority),
+      metadata: {
+        taskId: task.id,
+        taskTitle: task.title,
+        repository: getDefaultGitHubRepository(),
+      },
+    });
+
+    if (approvalBundle) {
+      const snapshotWithTracking = await updatePersistedWorkspaceSnapshot((snapshot) => {
+        const targetTask = snapshot.tasks.find((item) => item.id === id);
+        if (!targetTask) {
+          return snapshot;
+        }
+
+        targetTask.metadata = {
+          ...(targetTask.metadata ?? {}),
+          trackingStatus: "approval_pending",
+          githubIssueApprovalId: approvalBundle.approval.id,
+        };
+
+        snapshot.timeline.unshift({
+          id: `timeline-task-approval-${targetTask.id}-${approvalBundle.approval.id}`,
+          type: "task_tracking",
+          title: targetTask.title,
+          description: `Workflow queued GitHub issue approval ${approvalBundle.approval.id} for this task.`,
+          source: "workflow",
+          timestamp: new Date().toISOString(),
+          metadata: {
+            taskId: targetTask.id,
+            approvalId: approvalBundle.approval.id,
+            trackingStatus: "approval_pending",
+          },
+          relatedRecordIds: [targetTask.id],
+        });
+
+        return snapshot;
+      });
+
+      if (snapshotWithTracking) {
+        finalSnapshot = snapshotWithTracking;
+        task = snapshotWithTracking.tasks.find((item) => item.id === id) ?? task;
+      }
+    }
+  }
+
+  await syncWorkflowFollowUpRecords(finalSnapshot);
+  return task;
 }
 
 export async function refreshWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   clearWorkspaceSnapshotCache();
   const snapshot = await buildWorkspaceSnapshot();
-  return saveWorkspaceSnapshot(snapshot);
+  const persisted = await saveWorkspaceSnapshot(snapshot);
+  await syncWorkflowFollowUpRecords(persisted);
+  return persisted;
 }
 
 export async function createSourceDocument(
@@ -340,6 +408,28 @@ export async function updateApprovalRequest(
       }
     }
 
+    const trackedTaskId =
+      approval.actionKind === "github.issue.create" &&
+      approval.metadata &&
+      typeof approval.metadata.taskId === "string"
+        ? approval.metadata.taskId
+        : null;
+    if (trackedTaskId) {
+      const task = snapshot.tasks.find((item) => item.id === trackedTaskId);
+      if (task) {
+        task.metadata = {
+          ...(task.metadata ?? {}),
+          githubIssueApprovalId: approval.id,
+          trackingStatus:
+            status === "approved" ? "approval_pending" : "approval_rejected",
+          lastTrackingMessage:
+            status === "approved"
+              ? "GitHub issue approval granted. Authrix is executing the mediated write."
+              : "GitHub issue approval was rejected before execution.",
+        };
+      }
+    }
+
     const auditEvent: AuditEvent = {
       id: `audit-approval-${approval.id}-${approval.status}`,
       workspaceId: WORKSPACE_ID,
@@ -384,6 +474,7 @@ export async function updateApprovalRequest(
     return null;
   }
 
+  await syncWorkflowFollowUpRecords(updatedSnapshot);
   return updatedSnapshot.approvalRequests.find((item) => item.id === id) ?? null;
 }
 
@@ -410,6 +501,30 @@ export async function recordApprovalExecutionResult(
       );
       if (action) {
         action.status = "executed";
+      }
+    }
+
+    const trackedTaskId =
+      approval.actionKind === "github.issue.create" &&
+      approval.metadata &&
+      typeof approval.metadata.taskId === "string"
+        ? approval.metadata.taskId
+        : null;
+    if (trackedTaskId) {
+      const task = snapshot.tasks.find((item) => item.id === trackedTaskId);
+      if (task) {
+        task.metadata = {
+          ...(task.metadata ?? {}),
+          githubIssueApprovalId: approval.id,
+          trackingStatus: input.success ? "tracked" : "execution_failed",
+          githubIssueUrl:
+            typeof input.metadata?.issueUrl === "string" ? input.metadata.issueUrl : undefined,
+          githubIssueNumber:
+            typeof input.metadata?.issueNumber === "number"
+              ? input.metadata.issueNumber
+              : undefined,
+          lastTrackingMessage: input.message,
+        };
       }
     }
 
@@ -454,6 +569,7 @@ export async function recordApprovalExecutionResult(
     return null;
   }
 
+  await syncWorkflowFollowUpRecords(updatedSnapshot);
   return updatedSnapshot.approvalRequests.find((item) => item.id === id) ?? null;
 }
 
@@ -561,10 +677,71 @@ export async function createLiveApprovalRequest(input: {
   return action && approval ? { action, approval } : null;
 }
 
+function shouldQueueWorkflowIssueApproval(task: SuggestedTask): boolean {
+  if (task.sourceAgentId !== "workflow" || task.status !== "approved") {
+    return false;
+  }
+
+  const trackingStatus =
+    typeof task.metadata?.trackingStatus === "string"
+      ? task.metadata.trackingStatus
+      : null;
+  const githubIssueNumber = task.metadata?.githubIssueNumber;
+
+  return trackingStatus !== "approval_pending" &&
+    trackingStatus !== "tracked" &&
+    typeof githubIssueNumber !== "number";
+}
+
+function buildWorkflowIssueTitle(task: SuggestedTask): string {
+  return `Workflow follow-up: ${task.title}`;
+}
+
+function buildWorkflowIssueDescription(task: SuggestedTask): string {
+  const owner = task.suggestedOwner?.trim() || "Unassigned";
+  const dueDate = task.dueDate ? new Date(task.dueDate).toISOString() : "Not set";
+
+  return [
+    task.description,
+    "",
+    "---",
+    "Created by Authrix Workflow after task approval.",
+    `Task id: ${task.id}`,
+    `Priority: ${task.priority}`,
+    `Owner: ${owner}`,
+    `Due date: ${dueDate}`,
+    `Source: ${task.source}`,
+    `Source agent: ${task.sourceAgentId}`,
+  ].join("\n");
+}
+
+function mapTaskPriorityToRisk(
+  priority: SuggestedTask["priority"]
+): ApprovalRequest["riskLevel"] {
+  if (priority === "critical" || priority === "high") {
+    return "high";
+  }
+
+  if (priority === "medium") {
+    return "medium";
+  }
+
+  return "low";
+}
+
+function getDefaultGitHubRepository(): string | undefined {
+  const owner = process.env.GITHUB_OWNER?.trim();
+  const repo = process.env.GITHUB_REPO?.trim();
+
+  return owner && repo ? `${owner}/${repo}` : undefined;
+}
+
 async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   const refreshedAt = new Date().toISOString();
   const existingSnapshot = await loadPersistedWorkspaceSnapshot();
   const githubIngestion = await getGitHubIngestionResult();
+  const slackState = await loadSlackWorkspaceState().catch(() => null);
+  const runtimeSessions = await compactRecentRuntimeSessions(8);
   const integrations = buildIntegrationStatuses(githubIngestion.integration);
   const workspace: Workspace = {
     id: WORKSPACE_ID,
@@ -585,12 +762,16 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
   );
 
   const meetingArtifacts = docsRuns.map((run) => run.output.artifact);
+  const workflowMeetingArtifacts = selectWorkflowMeetingArtifacts(
+    meetingArtifacts,
+    sourceDocuments
+  );
   let decisionRecords = docsRuns.flatMap((run) => run.output.decisions);
 
   const taskRun = await executeTaskAgent(engineerRun.output.summary);
   const workflowRun = await executeWorkflowAgent(
     engineerRun.output.summary,
-    meetingArtifacts,
+    workflowMeetingArtifacts,
     [
       ...(existingSnapshot?.tasks ?? []),
       ...taskRun.output.tasks,
@@ -603,7 +784,7 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
       existingSnapshot?.tasks ?? []
     )
   );
-  decisionRecords = linkDecisionsToTasks(decisionRecords, meetingArtifacts, tasks);
+  decisionRecords = linkDecisionsToTasks(decisionRecords, workflowMeetingArtifacts, tasks);
 
   const persistedCostReport = existingSnapshot?.costReport;
   const devopsRun = await executeDevopsAgent(persistedCostReport);
@@ -646,6 +827,21 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
     ...operationalDriftAlerts,
     ...approvalDriftAlerts,
   ]);
+  const memories = buildWorkspaceMemoryRecords({
+    engineeringSummary: engineerRun.output.summary,
+    decisionRecords,
+    tasks,
+    costReport: devopsRun.output.report,
+    runtimeSessions,
+    slackState,
+  });
+  const handoffs = buildAgentHandoffRecords({
+    sourceDocuments,
+    meetingArtifacts,
+    tasks,
+    approvals: approvalRequests,
+    slackState,
+  });
 
   for (const action of proposedActions) {
     const approval = approvalRequests.find(
@@ -665,10 +861,14 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
     workflowPipeline: workflowRun.pipelineStatus,
     devopsProvider: devopsRun.provider,
     hasPersistedDocuments: Boolean(existingSnapshot?.sourceDocuments.length),
-    hasPersistedCostReport: Boolean(
-      existingSnapshot?.costReport && existingSnapshot.costReport.breakdown.length > 0
-    ),
+    financeSourceMode:
+      devopsRun.output.report.metadata?.sourceMode === "live" ||
+      devopsRun.output.report.metadata?.sourceMode === "mixed"
+        ? devopsRun.output.report.metadata.sourceMode
+        : "mock",
     driftAlertCount: operationalDriftAlerts.length + approvalDriftAlerts.length,
+    memoryCount: memories.length,
+    resumableSessionCount: countResumableRuntimeSessions(runtimeSessions),
   });
   const agentRuns = buildAgentRuns(
     engineerRun,
@@ -687,6 +887,7 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
     riskAlerts,
     approvalRequests,
     auditEvents,
+    handoffs,
   });
 
   return {
@@ -695,6 +896,7 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
       storage: "filesystem",
       refreshedAt,
       persistedAt: refreshedAt,
+      memoryRefreshedAt: refreshedAt,
       pipelines,
     },
     integrations,
@@ -711,6 +913,8 @@ async function buildWorkspaceSnapshot(): Promise<WorkspaceSnapshot> {
     approvalRequests,
     auditEvents,
     agentRuns,
+    memories,
+    handoffs,
     timeline,
   };
 }
@@ -775,6 +979,36 @@ function cloneSourceDocuments(documents: SourceDocument[]): SourceDocument[] {
   }));
 }
 
+function selectWorkflowMeetingArtifacts(
+  meetingArtifacts: MeetingArtifact[],
+  sourceDocuments: SourceDocument[]
+): MeetingArtifact[] {
+  const documentsById = new Map(sourceDocuments.map((document) => [document.id, document]));
+
+  return meetingArtifacts.filter((artifact) =>
+    shouldHandoffSourceDocumentToWorkflow(documentsById.get(artifact.sourceDocumentId))
+  );
+}
+
+function shouldHandoffSourceDocumentToWorkflow(
+  document: SourceDocument | undefined
+): boolean {
+  if (!document) {
+    return true;
+  }
+
+  const flag = document.metadata.workflowHandoffRequested;
+  if (typeof flag === "boolean") {
+    return flag;
+  }
+
+  if (typeof flag === "string") {
+    return flag !== "false";
+  }
+
+  return true;
+}
+
 function resolveSourceDocuments(
   existingSnapshot: WorkspaceSnapshot | null
 ): SourceDocument[] {
@@ -824,20 +1058,25 @@ async function executeDevopsAgent(
 ): Promise<LocalExecution<{ report: CostReport }>> {
   const modelProvider = getModelProvider();
   const model = getDefaultModelForAgent("devops");
+  const financeIngestion = await loadFinanceIngestion(existingReport);
+  const baseInput = {
+    costBreakdown: financeIngestion.breakdown,
+    anomalies: financeIngestion.anomalies,
+    period: financeIngestion.period,
+    totalSpend: financeIngestion.totalSpend,
+    currency: financeIngestion.currency,
+  };
+  const reportMetadata = {
+    sourceMode: financeIngestion.sourceMode,
+    sources: financeIngestion.sources,
+    ingestionMessage: financeIngestion.ingestionMessage,
+  } satisfies Record<string, unknown>;
 
   if (modelProvider.configured) {
     try {
       const start = Date.now();
-      const output = await runModelDevopsAgent(
-        {
-          costBreakdown: existingReport?.breakdown ?? mockCostBreakdown,
-          anomalies: existingReport?.anomalies ?? mockCostAnomalies,
-          period: existingReport?.period ?? mockCostTotals.period,
-          totalSpend: existingReport?.totalSpend ?? mockCostTotals.totalSpend,
-          currency: existingReport?.currency ?? mockCostTotals.currency,
-        },
-        model
-      );
+      const output = await runModelDevopsAgent(baseInput, model);
+      output.report.metadata = reportMetadata;
 
       return {
         agentId: "devops",
@@ -845,16 +1084,23 @@ async function executeDevopsAgent(
         executionTimeMs: Date.now() - start,
         timestamp: output.report.generatedAt,
         provider: "model",
-        fallbackReason: existingReport
-          ? "Hosted model summarized the persisted cost report."
-          : "Hosted model summarized the bundled fallback cost dataset until live billing or manual cost inputs are provided.",
+        fallbackReason:
+          financeIngestion.sourceMode === "live"
+            ? "Hosted model summarized the live finance ingestion dataset."
+            : financeIngestion.sourceMode === "mixed"
+              ? "Hosted model summarized a mixed finance dataset with both live and fallback signals."
+              : "Hosted model summarized the bundled fallback finance dataset until a billing export is connected.",
       };
     } catch {
       // Honest fallback to the typed local path below.
     }
   }
 
-  if (existingReport && existingReport.breakdown.length > 0) {
+  if (
+    existingReport &&
+    existingReport.breakdown.length > 0 &&
+    financeIngestion.sourceMode !== "live"
+  ) {
     return {
       agentId: "devops",
       output: { report: cloneCostReport(existingReport) },
@@ -862,24 +1108,20 @@ async function executeDevopsAgent(
       timestamp: existingReport.generatedAt,
       provider: "local",
       fallbackReason:
-        "Using the persisted cost report until live billing ingestion is connected.",
+        "Using the persisted finance report until a live billing export is connected.",
     };
   }
 
+  const output = devopsAgent(baseInput);
+  output.report.metadata = reportMetadata;
+
   return {
     agentId: "devops",
-    output: devopsAgent({
-      costBreakdown: mockCostBreakdown,
-      anomalies: mockCostAnomalies,
-      period: mockCostTotals.period,
-      totalSpend: mockCostTotals.totalSpend,
-      currency: mockCostTotals.currency,
-    }),
+    output,
     executionTimeMs: 39,
     timestamp: new Date().toISOString(),
     provider: "local",
-    fallbackReason:
-      "DevOps reporting still uses the bundled cost dataset until live billing or manual cost inputs are provided.",
+    fallbackReason: financeIngestion.ingestionMessage,
   };
 }
 
@@ -892,8 +1134,10 @@ function buildPipelineStatuses(input: {
   workflowPipeline: WorkspacePipelineStatus;
   devopsProvider: "local" | "model";
   hasPersistedDocuments: boolean;
-  hasPersistedCostReport: boolean;
+  financeSourceMode: "live" | "mixed" | "mock";
   driftAlertCount: number;
+  memoryCount: number;
+  resumableSessionCount: number;
 }): WorkspacePipelineStatus[] {
   const githubPipeline: WorkspacePipelineStatus = {
     id: "github-ingestion",
@@ -933,15 +1177,26 @@ function buildPipelineStatuses(input: {
       updatedAt: input.refreshedAt,
     },
     {
+      id: "shared-memory",
+      label: "Shared memory",
+      provider: "local",
+      health: "ready",
+      message:
+        input.resumableSessionCount > 0
+          ? `Authrix compacted ${input.memoryCount} shared memory record(s) and can resume ${input.resumableSessionCount} session(s) without losing context.`
+          : `Authrix compacted ${input.memoryCount} shared memory record(s) for cross-specialist continuity.`,
+      updatedAt: input.refreshedAt,
+    },
+    {
       id: "devops-signals",
-      label: "DevOps signals",
-      provider: input.hasPersistedCostReport ? input.devopsProvider : "mock",
-      health: input.hasPersistedCostReport ? "ready" : "fallback",
-      message: input.hasPersistedCostReport
+      label: "Finance/Ops signals",
+      provider: input.financeSourceMode === "mock" ? "mock" : input.devopsProvider,
+      health: input.financeSourceMode === "mock" ? "fallback" : "ready",
+      message: input.financeSourceMode !== "mock"
         ? input.devopsProvider === "model"
-          ? "DevOps signals are using the live model layer over a persisted cost report."
-          : "DevOps signals are using the local typed pipeline over a persisted cost report."
-        : "DevOps signals are still using the bundled fallback dataset until a cost report is persisted.",
+          ? "Finance/Ops signals are using the live model layer over the latest spend report."
+          : "Finance/Ops signals are using the local typed pipeline over the latest spend report."
+        : "Finance/Ops signals are still using the bundled fallback dataset until a finance report is persisted.",
       updatedAt: input.refreshedAt,
     },
   ];
@@ -1084,7 +1339,7 @@ function buildProposedActions(
       actionKind: "github.issue.create",
       title: "Create follow-up issue for cost anomaly",
       description:
-        "The DevOps agent detected a rising spend pattern and wants to create a tracking issue for follow-up.",
+        "The Finance/Ops agent detected a rising spend pattern and wants to create a tracking issue for follow-up.",
       targetSystem: "GitHub",
       riskLevel: "medium",
       sourceAgentId: "devops",
@@ -1517,6 +1772,7 @@ function buildTimeline(input: {
   riskAlerts: RiskAlert[];
   approvalRequests: ApprovalRequest[];
   auditEvents: AuditEvent[];
+  handoffs: AgentHandoffRecord[];
 }): TimelineEntry[] {
   const entries: TimelineEntry[] = [
     ...input.sourceDocuments.map((document) => ({
@@ -1612,6 +1868,18 @@ function buildTimeline(input: {
       },
       relatedRecordIds: approval.relatedRecordIds,
     })),
+    ...input.handoffs.map((handoff) => ({
+      id: `timeline-${handoff.id}`,
+      type: "agent_handoff",
+      title: `${handoff.fromAgentId} -> ${handoff.toAgentId}`,
+      description: handoff.reason,
+      source: handoff.source,
+      timestamp: handoff.completedAt ?? handoff.createdAt,
+      metadata: {
+        status: handoff.status,
+      },
+      relatedRecordIds: handoff.relatedRecordIds,
+    })),
     ...input.auditEvents.map((event) => ({
       id: `timeline-${event.id}`,
       type: "audit",
@@ -1633,6 +1901,7 @@ function cloneCostReport(report: CostReport): CostReport {
     period: { ...report.period },
     breakdown: report.breakdown.map((entry) => ({ ...entry })),
     anomalies: report.anomalies.map((entry) => ({ ...entry })),
+    metadata: report.metadata ? { ...report.metadata } : undefined,
   };
 }
 
@@ -1653,6 +1922,10 @@ function mergePersistedTasks(
       status: existing.status,
       suggestedOwner: existing.suggestedOwner ?? task.suggestedOwner,
       dueDate: existing.dueDate ?? task.dueDate,
+      metadata: {
+        ...(task.metadata ?? {}),
+        ...(existing.metadata ?? {}),
+      },
     };
   });
 

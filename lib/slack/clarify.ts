@@ -52,7 +52,7 @@ function fallbackQuestion(agentId: RoutedSlackAgentId): string {
   }
 
   if (agentId === "devops") {
-    return "What cost, deployment, or operational issue should DevOps investigate?";
+    return "What spend, pricing, billing, or operational issue should Finance/Ops investigate?";
   }
 
   return "What repo, file, or engineering change should Engineer work on?";
@@ -92,7 +92,7 @@ function formatAgentLabel(agentId: RoutedSlackAgentId): string {
   }
 
   if (agentId === "devops") {
-    return "DevOps";
+    return "Finance/Ops";
   }
 
   return "Engineer";

@@ -26,10 +26,10 @@ const AGENTS = [
       "border-amber-300/20 bg-amber-300/10 text-amber-100",
   },
   {
-    name: "DevOps",
-    role: "cost and operational risk",
+    name: "Finance/Ops",
+    role: "spend and operational risk",
     description:
-      "Tracks spend posture, detects drift, and explains operational anomalies against visible product activity.",
+      "Tracks spend posture, answers founder finance questions, and explains operational anomalies against visible workspace activity.",
     accent:
       "border-fuchsia-300/20 bg-fuchsia-300/10 text-fuchsia-100",
   },

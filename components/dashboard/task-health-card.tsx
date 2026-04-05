@@ -12,12 +12,20 @@ export function TaskHealthCard({ tasks }: TaskHealthCardProps) {
   const overdueTasks = openTasks.filter(
     (task) => task.dueDate && new Date(task.dueDate).getTime() < Date.now()
   );
+  const trackedTasks = tasks.filter(
+    (task) => typeof task.metadata?.githubIssueNumber === "number"
+  );
+  const pendingTrackedTasks = tasks.filter(
+    (task) => task.metadata?.trackingStatus === "approval_pending"
+  );
 
   const metrics = [
     { label: "Open tasks", value: openTasks.length },
     { label: "Completed", value: completedTasks.length },
     { label: "Missing owners", value: unownedTasks.length },
     { label: "Overdue", value: overdueTasks.length },
+    { label: "Tracked in GitHub", value: trackedTasks.length },
+    { label: "Approval queued", value: pendingTrackedTasks.length },
   ];
 
   return (

@@ -54,6 +54,13 @@ function buildActionTasks(
         sourceAgentId: "workflow",
         status: "suggested",
         createdAt: artifact.generatedAt,
+        metadata: {
+          workflowOrigin: "meeting_action_item",
+          sourceArtifactId: artifact.id,
+          sourceActionItemId: item.id,
+          ownerStatus: item.owner ? "assigned" : "missing",
+          trackingStatus: "not_requested",
+        },
       });
     }
   }
@@ -86,6 +93,12 @@ function buildOpenQuestionTasks(
         sourceAgentId: "workflow",
         status: "suggested",
         createdAt: artifact.generatedAt,
+        metadata: {
+          workflowOrigin: "open_question",
+          sourceArtifactId: artifact.id,
+          ownerStatus: "missing",
+          trackingStatus: "not_requested",
+        },
       });
     });
   }

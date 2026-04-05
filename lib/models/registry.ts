@@ -21,7 +21,7 @@ const DEFAULT_MODELS: Record<RoutedAgentId, { model: string; executionProfile: A
     devops: {
       model: "deepseek-r1:8b",
       executionProfile: "premium",
-      roleLabel: "DevOps",
+      roleLabel: "Finance/Ops",
     },
   };
 

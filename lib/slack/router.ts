@@ -3,7 +3,23 @@ import type { AgentId } from "@/types/agents";
 export function routeSlackMessageToAgent(text: string): AgentId {
   const normalized = text.toLowerCase();
 
-  if (matchesAny(normalized, ["cost", "spend", "billing", "infra", "ops", "vercel", "supabase"])) {
+  if (
+    matchesAny(normalized, [
+      "cost",
+      "spend",
+      "billing",
+      "infra",
+      "ops",
+      "vercel",
+      "supabase",
+      "finance",
+      "pricing",
+      "budget",
+      "burn",
+      "runway",
+      "openai",
+    ])
+  ) {
     return "devops";
   }
 

@@ -170,7 +170,7 @@ export function formatAgentLabel(agentId: AgentId): string {
   }
 
   if (agentId === "devops") {
-    return "DevOps";
+    return "Finance/Ops";
   }
 
   return "Engineer";
@@ -192,7 +192,21 @@ function detectInterestedAgents(text: string): AgentId[] {
     interested.add("workflow");
   }
 
-  if (matchesAny(normalized, ["cost", "spend", "ops", "billing", "infra", "deploy"])) {
+  if (
+    matchesAny(normalized, [
+      "cost",
+      "spend",
+      "ops",
+      "billing",
+      "infra",
+      "deploy",
+      "finance",
+      "pricing",
+      "budget",
+      "burn",
+      "runway",
+    ])
+  ) {
     interested.add("devops");
   }
 
@@ -210,7 +224,7 @@ function buildDelegationReason(
       : delegatedAgentId === "workflow"
         ? "The request includes ownership or follow-up work that should be tracked."
         : delegatedAgentId === "devops"
-          ? "The request includes operational cost or infrastructure review."
+          ? "The request includes finance, spend, or operational review."
           : "The request includes engineering execution work.";
 
   if (routeDecision.mode === "model") {

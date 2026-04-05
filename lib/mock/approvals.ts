@@ -7,7 +7,7 @@ export const mockApprovals: ApprovalRequest[] = [
     actionKind: "github.issue.create",
     title: "Create follow-up issue for cost anomaly",
     description:
-      "The DevOps agent detected a 45% OpenAI API spend increase and wants to create a tracking issue.",
+      "The Finance/Ops agent detected a 45% OpenAI API spend increase and wants to create a tracking issue.",
     sourceAgent: "devops",
     affectedSystem: "GitHub",
     riskLevel: "medium",

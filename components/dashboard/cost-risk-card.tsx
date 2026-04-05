@@ -20,8 +20,8 @@ export function CostRiskCard({
 
   return (
     <CardShell
-      title="API Spend / Risk"
-      description="Weekly spend visibility with per-service trends and anomaly signals."
+      title="Finance / Ops Risk"
+      description="Tracked spend visibility with per-service trends, model/API cost drivers, and anomaly signals."
       badge={
         <span className={`rounded-full px-3 py-1 text-xs ${riskBadgeClass}`}>
           {report.riskLevel} risk

@@ -91,7 +91,7 @@ export const mockGitHubEvents: GitHubEvent[] = [
     author: "kinshuk",
     title: "Add cost breakdown by service",
     description:
-      "DevOps agent now produces per-service cost breakdowns with trend indicators.",
+      "Finance/Ops agent now produces per-service cost breakdowns with trend indicators.",
     url: "https://github.com/authrix/platform/pull/45",
     timestamp: "2026-03-26T13:00:00Z",
     metadata: { state: "open", additions: 190, deletions: 20 },

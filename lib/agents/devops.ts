@@ -2,7 +2,7 @@ import type { DevOpsAgentInput, DevOpsAgentOutput } from "@/types/agents";
 import type { RiskLevel } from "@/types/domain";
 
 /**
- * DevOps agent: takes cost/usage data and produces a cost report with
+ * Finance/Ops agent: takes cost and usage data and produces a spend report with
  * risk assessment. MVP uses deterministic logic; will be backed by LLM later.
  */
 export function devopsAgent(input: DevOpsAgentInput): DevOpsAgentOutput {
@@ -56,10 +56,10 @@ function generateCostSummary(
   const trending = breakdown.filter((b) => b.trend === "up");
   const trendingNames = trending.map((b) => b.service).join(", ");
 
-  let summary = `Total spend this period: ${currency} ${totalSpend.toFixed(2)}. `;
+  let summary = `Total tracked spend this period: ${currency} ${totalSpend.toFixed(2)}. `;
 
   if (trending.length > 0) {
-    summary += `Costs trending up for: ${trendingNames}. `;
+    summary += `Spend is trending up for: ${trendingNames}. `;
   }
 
   if (anomalies.length > 0) {

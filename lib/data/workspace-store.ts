@@ -68,7 +68,7 @@ export function clearWorkspaceSnapshotCache(): void {
 async function readPersistedSnapshotFromDisk(): Promise<WorkspaceSnapshot | null> {
   try {
     const raw = await readFile(SNAPSHOT_PATH, "utf8");
-    return JSON.parse(raw) as WorkspaceSnapshot;
+    return migrateWorkspaceSnapshot(JSON.parse(raw) as Partial<WorkspaceSnapshot>);
   } catch (error) {
     if (isMissingFileError(error)) {
       return null;
@@ -76,6 +76,23 @@ async function readPersistedSnapshotFromDisk(): Promise<WorkspaceSnapshot | null
 
     throw error;
   }
+}
+
+function migrateWorkspaceSnapshot(snapshot: Partial<WorkspaceSnapshot>): WorkspaceSnapshot {
+  const refreshedAt = snapshot.state?.refreshedAt ?? new Date().toISOString();
+
+  return {
+    ...(snapshot as WorkspaceSnapshot),
+    state: {
+      storage: "filesystem",
+      refreshedAt,
+      persistedAt: snapshot.state?.persistedAt ?? refreshedAt,
+      memoryRefreshedAt: snapshot.state?.memoryRefreshedAt ?? refreshedAt,
+      pipelines: snapshot.state?.pipelines ?? [],
+    },
+    memories: snapshot.memories ?? [],
+    handoffs: snapshot.handoffs ?? [],
+  };
 }
 
 function isMissingFileError(error: unknown): boolean {

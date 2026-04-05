@@ -1,7 +1,9 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { refreshWorkspaceSnapshot } from "@/lib/data/workspace";
+import { getWorkspaceSnapshot, refreshWorkspaceSnapshot } from "@/lib/data/workspace";
+import { compactRecentRuntimeSessions, countResumableRuntimeSessions } from "@/lib/memory/service";
 import { AUTHRIX_DATA_DIR, resolveAuthrixDataPath } from "@/lib/security/paths";
 import { runScheduledSlackBriefing } from "@/lib/slack/briefings";
+import { syncWorkflowFollowUpRecords } from "@/lib/workflow/follow-up";
 import type { JobStatus } from "@/types/runtime";
 
 const DATA_DIR = AUTHRIX_DATA_DIR;
@@ -54,6 +56,42 @@ export async function submitSlackBriefingJob(scheduleId?: string): Promise<JobSt
   const jobs = await loadJobs();
   await saveJobs([job, ...jobs].slice(0, 50));
   void runSlackBriefingJob(job.id, scheduleId);
+
+  return cloneJob(job);
+}
+
+export async function submitWorkflowFollowUpJob(): Promise<JobStatus> {
+  const createdAt = new Date().toISOString();
+  const job: JobStatus = {
+    id: `job-workflow-followup-${Date.now()}`,
+    state: "queued",
+    createdAt,
+    result: {
+      type: "workflow.followup.run",
+    },
+  };
+
+  const jobs = await loadJobs();
+  await saveJobs([job, ...jobs].slice(0, 50));
+  void runWorkflowFollowUpJob(job.id);
+
+  return cloneJob(job);
+}
+
+export async function submitProactiveReviewJob(): Promise<JobStatus> {
+  const createdAt = new Date().toISOString();
+  const job: JobStatus = {
+    id: `job-proactive-review-${Date.now()}`,
+    state: "queued",
+    createdAt,
+    result: {
+      type: "workspace.proactive.review",
+    },
+  };
+
+  const jobs = await loadJobs();
+  await saveJobs([job, ...jobs].slice(0, 50));
+  void runProactiveReviewJob(job.id);
 
   return cloneJob(job);
 }
@@ -114,6 +152,73 @@ async function runSlackBriefingJob(jobId: string, scheduleId?: string): Promise<
       state: "failed",
       completedAt: new Date().toISOString(),
       error: error instanceof Error ? error.message : "Unknown Slack briefing error.",
+    }));
+  }
+}
+
+async function runWorkflowFollowUpJob(jobId: string): Promise<void> {
+  await updateJob(jobId, (job) => ({
+    ...job,
+    state: "running",
+    startedAt: new Date().toISOString(),
+  }));
+
+  try {
+    const snapshot = await getWorkspaceSnapshot();
+    const followUpSync = await syncWorkflowFollowUpRecords(snapshot);
+    await updateJob(jobId, (job) => ({
+      ...job,
+      state: "completed",
+      completedAt: new Date().toISOString(),
+      result: {
+        type: "workflow.followup.run",
+        reminderCount: followUpSync.openCount,
+        overdueCount: followUpSync.overdueCount,
+        scannedAt: new Date().toISOString(),
+      },
+    }));
+  } catch (error) {
+    await updateJob(jobId, (job) => ({
+      ...job,
+      state: "failed",
+      completedAt: new Date().toISOString(),
+      error: error instanceof Error ? error.message : "Unknown workflow follow-up error.",
+    }));
+  }
+}
+
+async function runProactiveReviewJob(jobId: string): Promise<void> {
+  await updateJob(jobId, (job) => ({
+    ...job,
+    state: "running",
+    startedAt: new Date().toISOString(),
+  }));
+
+  try {
+    const compactedSessions = await compactRecentRuntimeSessions(8);
+    const snapshot = await refreshWorkspaceSnapshot();
+    const followUpSync = await syncWorkflowFollowUpRecords(snapshot);
+
+    await updateJob(jobId, (job) => ({
+      ...job,
+      state: "completed",
+      completedAt: new Date().toISOString(),
+      result: {
+        type: "workspace.proactive.review",
+        memoryCount: snapshot.memories.length,
+        handoffCount: snapshot.handoffs.length,
+        resumableSessionCount: countResumableRuntimeSessions(compactedSessions),
+        reminderCount: followUpSync.openCount,
+        overdueCount: followUpSync.overdueCount,
+        reviewedAt: new Date().toISOString(),
+      },
+    }));
+  } catch (error) {
+    await updateJob(jobId, (job) => ({
+      ...job,
+      state: "failed",
+      completedAt: new Date().toISOString(),
+      error: error instanceof Error ? error.message : "Unknown proactive review error.",
     }));
   }
 }
