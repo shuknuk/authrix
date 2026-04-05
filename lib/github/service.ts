@@ -1,5 +1,6 @@
 import "server-only";
-import type { ConnectionStatus, GitHubActivityResponse } from "@/types/authrix";
+import type { ConnectionStatus, GitHubActivityResponse, NormalizedGitHubActivity } from "@/types/authrix";
+import type { GitHubEvent, IntegrationStatus } from "@/types/domain";
 import { isGitHubConfigured } from "@/lib/auth/config";
 import { fetchRecentGitHubEvents } from "@/lib/github/fetcher";
 import { fetchGitHubProfile } from "@/lib/github/oauth";
@@ -104,4 +105,66 @@ export async function getGitHubActivityFeed(): Promise<GitHubActivityResponse> {
       activities: getMockGitHubActivity(),
     };
   }
+}
+
+/**
+ * Get GitHub ingestion result
+ * Returns the current GitHub integration status and activity
+ */
+export async function getGitHubIngestionResult(): Promise<{
+  integration: {
+    service: string;
+    connected: boolean;
+    status: "active" | "inactive" | "error";
+    mode?: "mock" | "live" | "token-vault";
+  };
+  events: GitHubEvent[];
+}> {
+  const status = await getConnectionStatus();
+  const feed = await getGitHubActivityFeed();
+
+  // Map NormalizedGitHubActivity to GitHubEvent
+  const events: GitHubEvent[] = feed.activities.map((activity) => ({
+    id: activity.id,
+    type: activity.kind as GitHubEvent["type"],
+    repo: activity.repo,
+    author: activity.actor,
+    title: activity.title,
+    description: activity.summary,
+    url: activity.url ?? "",
+    timestamp: activity.occurredAt,
+    metadata: { source: activity.source },
+  }));
+
+  return {
+    integration: {
+      service: "github",
+      connected: status.connected,
+      status: status.connected ? "active" : "inactive",
+      mode: status.source === "github" ? "live" : "mock",
+    },
+    events,
+  };
+}
+
+/**
+ * Get Auth0 integration status
+ * Returns the current Auth0 authentication status
+ */
+export function getAuth0IntegrationStatus(): IntegrationStatus {
+  // Use static import to avoid async
+  const isConfigured = Boolean(
+    process.env.AUTH0_DOMAIN &&
+      process.env.AUTH0_CLIENT_ID &&
+      process.env.AUTH0_CLIENT_SECRET
+  );
+  return {
+    service: "auth0",
+    connected: isConfigured,
+    status: isConfigured ? "active" : "inactive",
+    mode: isConfigured ? "live" : "mock",
+    description: isConfigured
+      ? "Auth0 is configured and ready"
+      : "Auth0 is not configured",
+  };
 }

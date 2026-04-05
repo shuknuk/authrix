@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/client";
+import { getOptionalSession } from "@/lib/auth/session";
 import { isGitHubConfigured } from "@/lib/auth/config";
 import {
   buildGitHubAuthorizeUrl,
@@ -9,7 +9,7 @@ import {
 import { setGitHubOAuthTransaction } from "@/lib/github/session";
 
 export async function GET(request: Request) {
-  const session = await getSession();
+  const session = await getOptionalSession();
 
   if (!session) {
     return NextResponse.redirect(new URL("/auth/login", request.url));

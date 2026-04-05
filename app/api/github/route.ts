@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/client";
+import { getOptionalSession } from "@/lib/auth/session";
 import { isAuth0Configured } from "@/lib/auth/config";
 import { getGitHubActivityFeed } from "@/lib/github/service";
 
@@ -11,7 +11,7 @@ export async function GET() {
     );
   }
 
-  const session = await getSession();
+  const session = await getOptionalSession();
 
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

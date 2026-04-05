@@ -32,17 +32,7 @@ export interface Session {
 }
 
 export type RuntimeSessionOrigin = "slack" | "web" | "api" | "system";
-export type RuntimeSessionState = "active" | "archived";
-
-export interface RuntimeSessionRecord extends Session {
-  workspaceId: string;
-  origin: RuntimeSessionOrigin;
-  state: RuntimeSessionState;
-  runCount: number;
-  messageCount: number;
-  lastRunAt?: string;
-  lastError?: string;
-}
+export type RuntimeSessionState = "active" | "paused" | "closed" | "error";
 
 export interface ToolResult {
   success: boolean;
@@ -86,23 +76,6 @@ export interface JobStatus {
   error?: string;
 }
 
-export interface RuntimeRunRecord {
-  id: string;
-  sessionId: string;
-  agentId: string;
-  provider: RuntimeProvider;
-  origin: RuntimeSessionOrigin;
-  status: JobState;
-  createdAt: string;
-  startedAt?: string;
-  completedAt?: string;
-  inputSummary: string;
-  outputSummary?: string;
-  error?: string;
-  tools: string[];
-  metadata: Record<string, unknown>;
-}
-
 export type RuntimeTranscriptEventType =
   | "session_created"
   | "agent_input"
@@ -110,30 +83,7 @@ export type RuntimeTranscriptEventType =
   | "run_status"
   | "tool_result";
 
-export type RuntimeTranscriptRole = "user" | "assistant" | "system";
-
-export interface RuntimeTranscriptEvent {
-  id: string;
-  sessionId: string;
-  runId?: string;
-  role: RuntimeTranscriptRole;
-  type: RuntimeTranscriptEventType;
-  content: string;
-  createdAt: string;
-  metadata: Record<string, unknown>;
-}
-
-export type RuntimeControlEventType = "bridge_reset";
-export type RuntimeControlEventStatus = "succeeded" | "failed";
-
-export interface RuntimeControlEvent {
-  id: string;
-  type: RuntimeControlEventType;
-  status: RuntimeControlEventStatus;
-  createdAt: string;
-  message: string;
-  metadata: Record<string, unknown>;
-}
+export type RuntimeTranscriptRole = "user" | "assistant" | "system" | "tool";
 
 export interface RuntimeBridge {
   readonly provider: RuntimeProvider;
@@ -166,8 +116,6 @@ export interface RuntimeBridge {
 }
 
 // Runtime session/run records for persistence layer
-
-export type RuntimeSessionOrigin = "api" | "slack" | "web" | "system";
 
 export interface RuntimeSessionRecord {
   id: string;

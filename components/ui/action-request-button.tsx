@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { useApprovalModal } from "@/components/ui/approval-modal-provider";
 import type { ApprovalRequest } from "@/types/authrix";
 
@@ -13,5 +12,12 @@ export function ActionRequestButton({
 }) {
   const { requestApproval } = useApprovalModal();
 
-  return <Button onClick={() => requestApproval(request)}>{label}</Button>;
+  return (
+    <button
+      onClick={() => requestApproval(request)}
+      className="inline-flex items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] transition-colors hover:bg-[var(--bronze-soft)]"
+    >
+      {label}
+    </button>
+  );
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth/client";
+import { getOptionalSession } from "@/lib/auth/session";
 import { exchangeCodeForToken, fetchGitHubProfile } from "@/lib/github/oauth";
 import {
   clearGitHubOAuthTransaction,
@@ -9,7 +9,7 @@ import {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const session = await getSession();
+  const session = await getOptionalSession();
 
   if (!session) {
     return NextResponse.redirect(new URL("/auth/login", request.url));
