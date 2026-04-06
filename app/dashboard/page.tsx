@@ -59,58 +59,61 @@ export default async function DashboardPage() {
         description="A live operational snapshot of engineering progress, follow-through, approvals, and the health of your startup's always-on worker system."
       />
 
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/70 px-4 py-3 text-xs text-zinc-400">
-        <span>Workspace state persisted to filesystem</span>
-        <span>Refreshed {new Date(snapshot.state.refreshedAt).toLocaleString()}</span>
-        {engineeringPipeline ? (
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--background-elevated)] px-4 py-3 text-xs">
+        <span className="text-[var(--foreground-muted)]">Workspace state persisted to filesystem</span>
+        <span className="hidden sm:inline text-[var(--foreground-muted)]">·</span>
+        <span className="text-[var(--foreground-muted)]">Refreshed {new Date(snapshot.state.refreshedAt).toLocaleString()}</span>
+        <div className="flex flex-wrap gap-2">
+          {engineeringPipeline ? (
+            <span
+              className={`rounded-full px-2.5 py-1 whitespace-nowrap ${
+                engineeringPipeline.health === "ready"
+                  ? "bg-[var(--success-soft)] text-[var(--success)]"
+                  : engineeringPipeline.health === "fallback"
+                    ? "bg-[var(--warning-soft)] text-[var(--clay)]"
+                    : "bg-[var(--danger-soft)] text-[var(--danger)]"
+              }`}
+            >
+              Pipeline: {engineeringPipeline.provider}
+            </span>
+          ) : null}
+          {latestJob ? (
+            <span
+              className={`rounded-full px-2.5 py-1 whitespace-nowrap ${
+                latestJob.state === "completed"
+                  ? "bg-[var(--success-soft)] text-[var(--success)]"
+                  : latestJob.state === "failed"
+                    ? "bg-[var(--danger-soft)] text-[var(--danger)]"
+                    : "bg-[var(--warning-soft)] text-[var(--clay)]"
+              }`}
+            >
+              Job: {latestJob.state}
+            </span>
+          ) : null}
           <span
-            className={`rounded-full px-2.5 py-1 ${
-              engineeringPipeline.health === "ready"
-                ? "bg-green-900/30 text-green-300"
-                : engineeringPipeline.health === "fallback"
-                  ? "bg-amber-900/30 text-amber-300"
-                  : "bg-red-900/30 text-red-300"
+            className={`rounded-full px-2.5 py-1 whitespace-nowrap ${
+              securityPosture.deploymentMode === "worker-box"
+                ? "bg-[var(--success-soft)] text-[var(--success)]"
+                : "bg-[var(--warning-soft)] text-[var(--clay)]"
             }`}
           >
-            Engineering pipeline: {engineeringPipeline.provider}
+            {securityPosture.deploymentMode}
           </span>
-        ) : null}
-        {latestJob ? (
           <span
-            className={`rounded-full px-2.5 py-1 ${
-              latestJob.state === "completed"
-                ? "bg-green-900/30 text-green-300"
-                : latestJob.state === "failed"
-                  ? "bg-red-900/30 text-red-300"
-                  : "bg-amber-900/30 text-amber-300"
+            className={`rounded-full px-2.5 py-1 whitespace-nowrap ${
+              readinessReport.overallStatus === "ready"
+                ? "bg-[var(--success-soft)] text-[var(--success)]"
+                : readinessReport.overallStatus === "warning"
+                  ? "bg-[var(--warning-soft)] text-[var(--clay)]"
+                  : "bg-[var(--danger-soft)] text-[var(--danger)]"
             }`}
           >
-            Latest refresh job: {latestJob.state}
+            {readinessReport.overallStatus}
           </span>
-        ) : null}
-        <span
-          className={`rounded-full px-2.5 py-1 ${
-            securityPosture.deploymentMode === "worker-box"
-              ? "bg-green-900/30 text-green-300"
-              : "bg-amber-900/30 text-amber-300"
-          }`}
-        >
-          Deployment: {securityPosture.deploymentMode}
-        </span>
-        <span
-          className={`rounded-full px-2.5 py-1 ${
-            readinessReport.overallStatus === "ready"
-              ? "bg-green-900/30 text-green-300"
-              : readinessReport.overallStatus === "warning"
-                ? "bg-amber-900/30 text-amber-300"
-                : "bg-red-900/30 text-red-300"
-          }`}
-        >
-          Bring-up readiness: {readinessReport.overallStatus}
-        </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <OperatorOnboardingCard report={readinessReport} />
         <AgentRosterCard />
         <ModelLayerCard status={modelLayerStatus} />

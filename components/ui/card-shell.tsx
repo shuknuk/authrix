@@ -34,13 +34,13 @@ export function CardShell({
       className={`overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-md ${toneClasses[tone]}`}
     >
       <div className="border-b border-[var(--border-subtle)] px-5 py-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 space-y-1">
-            <h3 className="font-display text-lg font-medium text-[var(--foreground)]">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-1">
+            <h3 className="font-display text-lg font-medium text-[var(--foreground)] truncate">
               {title}
             </h3>
             {description ? (
-              <p className="max-w-xl text-sm text-[var(--foreground-muted)]">
+              <p className="max-w-xl text-sm text-[var(--foreground-muted)] line-clamp-2">
                 {description}
               </p>
             ) : null}
