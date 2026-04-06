@@ -27,30 +27,31 @@ import { listAuthrixRuntimeRuns, listAuthrixRuntimeSessions } from "@/lib/runtim
 export default async function DashboardPage() {
   await requireSession("/dashboard");
 
-  const [
-    snapshot,
-    jobs,
-    securityPosture,
-    readinessReport,
-    slackState,
-    modelLayerStatus,
-    runtimeSessions,
-    runtimeRuns,
-  ] = await Promise.all([
-    getWorkspaceSnapshot(),
-    listWorkspaceJobs(1),
-    Promise.resolve(getSecurityPosture()),
-    getDeploymentReadinessReport(),
-    loadSlackWorkspaceState(),
-    Promise.resolve(getModelLayerStatus()),
-    listAuthrixRuntimeSessions(4),
-    listAuthrixRuntimeRuns(4),
-  ]);
-  const engineeringPipeline = snapshot.state.pipelines.find(
-    (pipeline) => pipeline.id === "engineering-summary"
-  );
-  const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
-  const latestJob = jobs[0];
+  try {
+    const [
+      snapshot,
+      jobs,
+      securityPosture,
+      readinessReport,
+      slackState,
+      modelLayerStatus,
+      runtimeSessions,
+      runtimeRuns,
+    ] = await Promise.all([
+      getWorkspaceSnapshot(),
+      listWorkspaceJobs(1),
+      Promise.resolve(getSecurityPosture()),
+      getDeploymentReadinessReport(),
+      loadSlackWorkspaceState(),
+      Promise.resolve(getModelLayerStatus()),
+      listAuthrixRuntimeSessions(4),
+      listAuthrixRuntimeRuns(4),
+    ]);
+    const engineeringPipeline = snapshot.state.pipelines.find(
+      (pipeline) => pipeline.id === "engineering-summary"
+    );
+    const driftAlerts = snapshot.riskAlerts.filter((alert) => alert.category === "drift");
+    const latestJob = jobs[0];
 
   return (
     <div className="space-y-6">
@@ -147,4 +148,15 @@ export default async function DashboardPage() {
       </div>
     </div>
   );
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    return (
+      <div className="p-8">
+        <h1 className="text-xl font-bold mb-4">Dashboard Error</h1>
+        <pre className="bg-red-50 p-4 rounded overflow-auto text-sm">
+          {error instanceof Error ? error.message : String(error)}
+        </pre>
+      </div>
+    );
+  }
 }
