@@ -2,6 +2,7 @@ import "server-only";
 import type { ConnectionStatus, GitHubActivityResponse, NormalizedGitHubActivity } from "@/types/authrix";
 import type { GitHubEvent, IntegrationStatus } from "@/types/domain";
 import { isGitHubConfigured } from "@/lib/auth/config";
+import { getGitHubTokenVaultAccessToken, isTokenVaultConfigured } from "@/lib/auth/token-vault";
 import { fetchRecentGitHubEvents } from "@/lib/github/fetcher";
 import { fetchGitHubProfile } from "@/lib/github/oauth";
 import { normalizeGitHubActivity } from "@/lib/github/normalizer";
@@ -9,6 +10,29 @@ import { getGitHubSession } from "@/lib/github/session";
 import { getMockConnectionStatus, getMockGitHubActivity } from "@/lib/mock/github";
 
 export async function getConnectionStatus(): Promise<ConnectionStatus> {
+  // Prefer Token Vault (delegated access) over direct OAuth session
+  const tokenVaultToken = await getGitHubTokenVaultAccessToken();
+  if (tokenVaultToken) {
+    try {
+      const profile = await fetchGitHubProfile(tokenVaultToken);
+      return {
+        provider: "github",
+        connected: true,
+        source: "github",
+        account: {
+          login: profile.login,
+          name: profile.name ?? undefined,
+          avatarUrl: profile.avatar_url,
+        },
+        lastSyncAt: new Date().toISOString(),
+        message:
+          "GitHub is connected through Auth0 Token Vault. Delegated access is active.",
+      };
+    } catch {
+      // Token Vault token failed, fall through to direct OAuth session
+    }
+  }
+
   if (!isGitHubConfigured()) {
     return {
       provider: "github",
@@ -55,6 +79,34 @@ export async function getConnectionStatus(): Promise<ConnectionStatus> {
 
 export async function getGitHubActivityFeed(): Promise<GitHubActivityResponse> {
   const fetchedAt = new Date().toISOString();
+
+  // Prefer Token Vault token for GitHub API calls
+  const tokenVaultToken = await getGitHubTokenVaultAccessToken();
+  if (tokenVaultToken) {
+    try {
+      const profile = await fetchGitHubProfile(tokenVaultToken);
+      const events = await fetchRecentGitHubEvents(tokenVaultToken, profile.login);
+      const normalized = normalizeGitHubActivity(events, "github");
+
+      if (normalized.length >= 3) {
+        return {
+          connected: true,
+          source: "github",
+          fetchedAt,
+          activities: normalized,
+        };
+      }
+
+      return {
+        connected: true,
+        source: "mock",
+        fetchedAt,
+        activities: getMockGitHubActivity(),
+      };
+    } catch {
+      // Token Vault token failed, fall through to direct OAuth session
+    }
+  }
 
   if (!isGitHubConfigured()) {
     return {
@@ -141,7 +193,9 @@ export async function getGitHubIngestionResult(): Promise<{
       service: "github",
       connected: status.connected,
       status: status.connected ? "active" : "inactive",
-      mode: status.source === "github" ? "live" : "mock",
+      mode: status.source === "github"
+        ? (isTokenVaultConfigured ? "token-vault" : "live")
+        : "mock",
     },
     events,
   };

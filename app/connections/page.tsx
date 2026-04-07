@@ -7,6 +7,10 @@ import {
   getGitHubConnectionName,
   getGitHubConnectionScopes,
 } from "@/lib/auth/token-vault";
+import {
+  getSlackConnectionName,
+  getSlackConnectionScopes,
+} from "@/lib/auth/slack-token-vault";
 import { requireSession } from "@/lib/auth/session";
 import { getWorkspaceSnapshot } from "@/lib/data/workspace";
 import {
@@ -58,6 +62,10 @@ export default async function ConnectionsPage() {
   const githubConnectionName = getGitHubConnectionName();
   const githubConnectHref = githubConnectionName
     ? buildGitHubConnectHref(githubConnectionName, getGitHubConnectionScopes())
+    : null;
+  const slackConnectionName = getSlackConnectionName();
+  const slackConnectHref = slackConnectionName
+    ? buildSlackConnectHref(slackConnectionName, getSlackConnectionScopes())
     : null;
 
   return (
@@ -250,6 +258,22 @@ export default async function ConnectionsPage() {
                       )}
                     </div>
                   ) : null}
+                  {integration.service === "Slack" && slackConnectHref ? (
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {integration.mode !== "token-vault" ? (
+                        <a
+                          href={slackConnectHref}
+                          className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800"
+                        >
+                          Connect Slack With Auth0
+                        </a>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-green-800/50 bg-green-900/20 px-3 py-1.5 text-xs font-medium text-green-300">
+                          Delegated Slack access active
+                        </span>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
                 <span
                   className={`rounded-full px-3 py-1 text-xs ${
@@ -280,6 +304,17 @@ export default async function ConnectionsPage() {
 }
 
 function buildGitHubConnectHref(connectionName: string, scopes: string[]): string {
+  const params = new URLSearchParams({
+    connection: connectionName,
+    returnTo: "/connections",
+  });
+
+  scopes.forEach((scope) => params.append("scopes", scope));
+
+  return `/auth/connect?${params.toString()}`;
+}
+
+function buildSlackConnectHref(connectionName: string, scopes: string[]): string {
   const params = new URLSearchParams({
     connection: connectionName,
     returnTo: "/connections",
