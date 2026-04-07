@@ -2,6 +2,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolveAuthrixDataPath } from "@/lib/security/paths";
 import type { EngineerExecutionRecord } from "@/types/engineer";
 
+// Check if we're in a serverless environment
+const isServerlessEnvironment = process.env.VERCEL || process.env.NOW_REGION;
+
+// In-memory fallback for serverless environments
+let inMemoryEngineerState: PersistedEngineerState | null = null;
+
 const ENGINEER_STATE_PATH = resolveAuthrixDataPath("engineer-state.json");
 
 interface PersistedEngineerState {
@@ -108,12 +114,41 @@ async function saveEngineerState(state: PersistedEngineerState): Promise<void> {
     updatedAt: new Date().toISOString(),
   };
 
-  await mkdir(resolveAuthrixDataPath(), { recursive: true });
-  await writeFile(ENGINEER_STATE_PATH, JSON.stringify(nextState, null, 2), "utf8");
-  cache = nextState;
+  // In serverless environments, use in-memory storage
+  if (isServerlessEnvironment) {
+    cache = nextState;
+    inMemoryEngineerState = nextState;
+    return;
+  }
+
+  try {
+    await mkdir(resolveAuthrixDataPath(), { recursive: true });
+    await writeFile(ENGINEER_STATE_PATH, JSON.stringify(nextState, null, 2), "utf8");
+    cache = nextState;
+  } catch (error) {
+    // Even if file system write fails, store in memory if we're in serverless environment
+    if (isServerlessEnvironment) {
+      cache = nextState;
+      inMemoryEngineerState = nextState;
+      return;
+    }
+    throw error;
+  }
 }
 
 async function readEngineerStateFromDisk(): Promise<PersistedEngineerState> {
+  // In serverless environments, try to use in-memory state first
+  if (isServerlessEnvironment && inMemoryEngineerState) {
+    return inMemoryEngineerState;
+  } else if (isServerlessEnvironment) {
+    const state = {
+      updatedAt: new Date().toISOString(),
+      executions: [],
+    };
+    inMemoryEngineerState = state;
+    return state;
+  }
+
   try {
     const raw = await readFile(ENGINEER_STATE_PATH, "utf8");
     return migrateEngineerState(JSON.parse(raw) as Partial<PersistedEngineerState>);

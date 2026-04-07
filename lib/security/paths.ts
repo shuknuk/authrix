@@ -1,6 +1,10 @@
 import path from "node:path";
 
-export const AUTHRIX_DATA_DIR = path.resolve(process.cwd(), ".authrix-data");
+// In serverless environments like Vercel, we should use /tmp which is writable
+const isServerlessEnvironment = process.env.VERCEL || process.env.NOW_REGION;
+const basePath = isServerlessEnvironment ? "/tmp" : process.cwd();
+
+export const AUTHRIX_DATA_DIR = path.resolve(basePath, ".authrix-data");
 
 export function resolveAuthrixDataPath(...segments: string[]): string {
   const target = path.resolve(AUTHRIX_DATA_DIR, ...segments);

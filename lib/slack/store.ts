@@ -20,14 +20,29 @@ import type { JobState } from "@/types/runtime";
 
 const SLACK_STATE_PATH = resolveAuthrixDataPath("slack-state.json");
 const WORKSPACE_ID = "workspace-authrix";
+// Check if we're in a serverless environment
+const isServerlessEnvironment = process.env.VERCEL || process.env.NOW_REGION;
+
+// In-memory fallback for serverless environments
+let inMemorySlackState: SlackWorkspaceState | null = null;
 
 export async function loadSlackWorkspaceState(): Promise<SlackWorkspaceState> {
   try {
     const raw = await readFile(SLACK_STATE_PATH, "utf8");
     return migrateSlackWorkspaceState(JSON.parse(raw) as Partial<SlackWorkspaceState>);
   } catch (error) {
+    // In serverless environments, try to use in-memory state first
+    if (isServerlessEnvironment && inMemorySlackState) {
+      return inMemorySlackState;
+    }
+    
     if (isMissingFileError(error)) {
-      return createEmptySlackWorkspaceState();
+      const emptyState = createEmptySlackWorkspaceState();
+      // In serverless environments, store the initial state in memory
+      if (isServerlessEnvironment) {
+        inMemorySlackState = emptyState;
+      }
+      return emptyState;
     }
 
     throw error;
@@ -42,8 +57,24 @@ export async function saveSlackWorkspaceState(
     updatedAt: new Date().toISOString(),
   };
 
-  await mkdir(resolveAuthrixDataPath(), { recursive: true });
-  await writeFile(SLACK_STATE_PATH, JSON.stringify(nextState, null, 2), "utf8");
+  // In serverless environments, use in-memory storage
+  if (isServerlessEnvironment) {
+    inMemorySlackState = nextState;
+    return nextState;
+  }
+
+  try {
+    await mkdir(resolveAuthrixDataPath(), { recursive: true });
+    await writeFile(SLACK_STATE_PATH, JSON.stringify(nextState, null, 2), "utf8");
+  } catch (error) {
+    // Even if file system write fails, store in memory if we're in serverless environment
+    if (isServerlessEnvironment) {
+      inMemorySlackState = nextState;
+      return nextState;
+    }
+    throw error;
+  }
+  
   return nextState;
 }
 
