@@ -8,15 +8,20 @@ interface GlobalErrorProps {
 }
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
-  // Redirect errors should be handled by Next.js's redirect system,
-  // not by this error boundary. Re-throw so Next.js can process the redirect.
-  if (error.digest?.startsWith("NEXT_REDIRECT")) {
-    throw error;
-  }
-
   useEffect(() => {
-    console.error("Workspace error:", error);
+    // Redirect and not-found errors are handled by Next.js internally.
+    // Log them at debug level only so they don't pollute the console.
+    if (!error.digest?.startsWith("NEXT_")) {
+      console.error("Workspace error:", error);
+    }
   }, [error]);
+
+  // Don't render the error UI for redirect or not-found errors.
+  // Next.js handles these internally; showing our error boundary here
+  // would be misleading since the user is about to be redirected.
+  if (error.digest?.startsWith("NEXT_")) {
+    return null;
+  }
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-5 py-10">

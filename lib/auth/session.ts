@@ -16,6 +16,13 @@ export async function getOptionalSession(): Promise<SessionData | null> {
   }
 }
 
+/**
+ * Returns the current session, or redirects to login if there is none.
+ *
+ * IMPORTANT: On protected routes, middleware handles the redirect before
+ * the page component renders. This function exists as a safety net for
+ * edge cases where middleware doesn't run (e.g. static previews).
+ */
 export async function requireSession(
   returnTo: string
 ): Promise<SessionData | null> {
@@ -30,8 +37,8 @@ export async function requireSession(
     }
     return session;
   } catch (error) {
-    // If the redirect itself throws, let it propagate — Next.js handles it.
-    // For other errors (e.g. session decryption), redirect to login.
+    // If auth0.getSession() fails for any reason other than redirect,
+    // redirect to login. For redirect errors, re-throw so Next.js handles it.
     if (error instanceof Error && error.message === "NEXT_REDIRECT") {
       throw error;
     }
