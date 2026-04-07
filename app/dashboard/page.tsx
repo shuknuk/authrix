@@ -263,7 +263,7 @@ export default async function DashboardPage() {
             <Link
               href="/connections"
               className={`group flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-[var(--background-elevated)] ${
-                slackState.workspace
+                slackState.workspaceId
                   ? "border-[var(--success-border)] bg-[var(--success-soft)] text-[var(--success)]"
                   : "border-[var(--border)] bg-[var(--background)] text-[var(--foreground-muted)]"
               }`}
@@ -271,7 +271,7 @@ export default async function DashboardPage() {
               <MessageSquareIcon className="h-4 w-4" />
               <span className="font-medium">Slack</span>
               <span className="text-xs opacity-70">
-                {slackState.workspace ? "● connected" : "○ not connected"}
+                {slackState.workspaceId ? "● connected" : "○ not connected"}
               </span>
             </Link>
           </div>
@@ -336,7 +336,7 @@ export default async function DashboardPage() {
               >
                 <div className="flex flex-col items-center gap-3 py-8 text-center">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--primary-muted)]">
-                    <Github className="h-5 w-5 text-[var(--primary)]" />
+                    <GitHubIcon className="h-5 w-5 text-[var(--primary)]" />
                   </div>
                   <p className="text-sm text-[var(--foreground-muted)]">
                     Connect GitHub to see live activity from your repositories
@@ -375,7 +375,7 @@ export default async function DashboardPage() {
               {!vercelConnected && (
                 <div className="flex items-center gap-3 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-elevated)] p-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--card)]">
-                    <Server className="h-5 w-5 text-[var(--foreground-muted)]" />
+                    <ServerIcon className="h-5 w-5 text-[var(--foreground-muted)]" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-[var(--foreground)]">
@@ -396,7 +396,7 @@ export default async function DashboardPage() {
               {!openaiConnected && (
                 <div className="flex items-center gap-3 rounded-lg border border-dashed border-[var(--border)] bg-[var(--background-elevated)] p-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--card)]">
-                    <Zap className="h-5 w-5 text-[var(--foreground-muted)]" />
+                    <ZapIcon className="h-5 w-5 text-[var(--foreground-muted)]" />
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-[var(--foreground)]">
@@ -469,7 +469,7 @@ export default async function DashboardPage() {
     return (
       <div className="p-8">
         <div className="flex items-center gap-3 mb-4">
-          <AlertCircle className="h-6 w-6 text-[var(--danger)]" />
+          <AlertCircleIcon className="h-6 w-6 text-[var(--danger)]" />
           <h1 className="text-xl font-bold">Dashboard Error</h1>
         </div>
         <div className="rounded-lg border border-[var(--danger-border)] bg-[var(--danger-soft)] p-4">

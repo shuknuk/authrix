@@ -38,8 +38,8 @@ export function ConnectionPlaceholder({
             Connect to see live data and enable automated insights
           </p>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link href={href}>{actionLabel}</Link>
+        <Button variant="secondary" onClick={() => window.location.href = href}>
+          {actionLabel}
         </Button>
       </div>
     </CardShell>
