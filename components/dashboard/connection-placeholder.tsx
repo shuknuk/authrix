@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { CardShell } from "@/components/ui/card-shell";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -38,9 +37,12 @@ export function ConnectionPlaceholder({
             Connect to see live data and enable automated insights
           </p>
         </div>
-        <Button variant="secondary" onClick={() => window.location.href = href}>
+        <Link
+          href={href}
+          className="inline-flex items-center justify-center rounded-md border border-[var(--border)] bg-[var(--background)] px-4 py-2 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--background-elevated)]"
+        >
           {actionLabel}
-        </Button>
+        </Link>
       </div>
     </CardShell>
   );
