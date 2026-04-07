@@ -18,6 +18,7 @@ import {
 } from "@/lib/data/workspace-store";
 import { getAuth0IntegrationStatus, getGitHubIngestionResult } from "@/lib/github/service";
 import { mockCostAnomalies, mockCostBreakdown, mockCostTotals } from "@/lib/mock/cost-data";
+import { getAggregatedCostReport } from "@/lib/costs/service";
 import { normalizeGitHubEvents } from "@/lib/mock/github-activity";
 import { mockIntegrations } from "@/lib/mock/integrations";
 import { mockMeetingDocuments } from "@/lib/mock/meeting-documents";
@@ -825,16 +826,30 @@ async function executeDevopsAgent(
   const modelProvider = getModelProvider();
   const model = getDefaultModelForAgent("devops");
 
+  // Try to fetch live cost data first
+  let liveCostReport: CostReport | null = null;
+  try {
+    const costResult = await getAggregatedCostReport();
+    if (!costResult.sources.mock) {
+      liveCostReport = costResult.report;
+    }
+  } catch (error) {
+    console.warn("Failed to fetch live cost data:", error);
+  }
+
+  // Use live cost report if available, otherwise fall back to existing report
+  const costReport = liveCostReport ?? existingReport;
+
   if (modelProvider.configured) {
     try {
       const start = Date.now();
       const output = await runModelDevopsAgent(
         {
-          costBreakdown: existingReport?.breakdown ?? mockCostBreakdown,
-          anomalies: existingReport?.anomalies ?? mockCostAnomalies,
-          period: existingReport?.period ?? mockCostTotals.period,
-          totalSpend: existingReport?.totalSpend ?? mockCostTotals.totalSpend,
-          currency: existingReport?.currency ?? mockCostTotals.currency,
+          costBreakdown: costReport?.breakdown ?? mockCostBreakdown,
+          anomalies: costReport?.anomalies ?? mockCostAnomalies,
+          period: costReport?.period ?? mockCostTotals.period,
+          totalSpend: costReport?.totalSpend ?? mockCostTotals.totalSpend,
+          currency: costReport?.currency ?? mockCostTotals.currency,
         },
         model
       );
@@ -845,8 +860,8 @@ async function executeDevopsAgent(
         executionTimeMs: Date.now() - start,
         timestamp: output.report.generatedAt,
         provider: "model",
-        fallbackReason: existingReport
-          ? "Hosted model summarized the persisted cost report."
+        fallbackReason: costReport
+          ? "Hosted model summarized live cost data."
           : "Hosted model summarized the bundled fallback cost dataset until live billing or manual cost inputs are provided.",
       };
     } catch {
@@ -854,15 +869,16 @@ async function executeDevopsAgent(
     }
   }
 
-  if (existingReport && existingReport.breakdown.length > 0) {
+  if (costReport && costReport.breakdown.length > 0) {
     return {
       agentId: "devops",
-      output: { report: cloneCostReport(existingReport) },
+      output: { report: cloneCostReport(costReport) },
       executionTimeMs: 12,
-      timestamp: existingReport.generatedAt,
+      timestamp: costReport.generatedAt,
       provider: "local",
-      fallbackReason:
-        "Using the persisted cost report until live billing ingestion is connected.",
+      fallbackReason: liveCostReport
+        ? "Using live cost data from connected billing sources."
+        : "Using the persisted cost report until live billing ingestion is connected.",
     };
   }
 
