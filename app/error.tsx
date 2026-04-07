@@ -1,11 +1,23 @@
 "use client";
 
+import { useEffect } from "react";
+
 interface GlobalErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
 }
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
+  // Redirect errors should be handled by Next.js's redirect system,
+  // not by this error boundary. Re-throw so Next.js can process the redirect.
+  if (error.digest?.startsWith("NEXT_REDIRECT")) {
+    throw error;
+  }
+
+  useEffect(() => {
+    console.error("Workspace error:", error);
+  }, [error]);
+
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-5 py-10">
       <div className="w-full max-w-2xl rounded-[var(--radius-lg)] border border-[var(--danger-border)] bg-[var(--background-elevated)] p-8">

@@ -7,7 +7,13 @@ export async function getOptionalSession(): Promise<SessionData | null> {
     return null;
   }
 
-  return auth0.getSession();
+  try {
+    return await auth0.getSession();
+  } catch {
+    // Session decryption failures (e.g. invalid secret, corrupted cookie)
+    // should not crash the layout. Treat as "no session".
+    return null;
+  }
 }
 
 export async function requireSession(
@@ -17,12 +23,20 @@ export async function requireSession(
     return null;
   }
 
-  const session = await auth0.getSession();
-  if (!session) {
+  try {
+    const session = await auth0.getSession();
+    if (!session) {
+      redirect(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
+    }
+    return session;
+  } catch (error) {
+    // If the redirect itself throws, let it propagate — Next.js handles it.
+    // For other errors (e.g. session decryption), redirect to login.
+    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+      throw error;
+    }
     redirect(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
   }
-
-  return session;
 }
 
 export async function hasAuthenticatedSession(): Promise<boolean> {
